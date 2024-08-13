@@ -5,6 +5,7 @@ module Main where
 import Control.Monad (when)
 import Control.Monad.State
 import Control.Monad.Except
+import Data.List (group)
 import qualified Data.Map as M
 import Text.Read (readMaybe)
 
@@ -31,7 +32,7 @@ data GameError
   | InvalidBottleId String
   | BottleNotFound BottleId
   | FromBottleIsEmpty BottleId
-  | ToBottleIsFull BottleId
+  | ToBottleIsTooFull BottleId
   | ColorsDontMatch Color Color
 
 type Game a = ExceptT GameError (StateT GameState IO) a
@@ -65,26 +66,26 @@ getBottle bottleId = do
 
 pour :: BottleId -> BottleId -> Game ()
 pour from to = do
-  bottles <- get
+  -- Get the two bottles
   fromBottle <- getBottle from
   toBottle <- getBottle to
   -- Check there are colors in the from bottle
-  (fromHead, fromTail) <- case fromBottle of
+  (fromHead, fromTail) <- case group fromBottle of
     [] -> throwError (FromBottleIsEmpty from)
-    (x:xs) -> pure (x, xs) 
+    (x:xs) -> pure (x, concat xs)
   -- Check there's space in the to bottle
-  when (length toBottle >= 4) $
-    throwError (ToBottleIsFull to)
+  when (length toBottle > 4 - length fromHead) $
+    throwError (ToBottleIsTooFull to)
   -- Check the colors match
+  let fromColor = head fromHead
   case headMaybe toBottle of
     Nothing -> pure ()
-    Just toHead -> when (fromHead /= toHead) $
-      throwError (ColorsDontMatch fromHead toHead)
+    Just toColor ->
+      when (fromColor /= toColor) $
+        throwError (ColorsDontMatch fromColor toColor)
   -- Pour a color from one bottle to the other
-  let newFromBottle = fromTail
-  let newToBottle = fromHead:toBottle
-  let newBottles = M.insert from newFromBottle $ M.insert to newToBottle bottles
-  put newBottles
+  modify (M.insert from fromTail)
+  modify (M.insert to (fromHead <> toBottle))
 
 showBottle :: BottleId -> Bottle -> String
 showBottle bid bottle = show bid <> ": " <> show (map fromEnum bottle)
@@ -114,8 +115,8 @@ handleGameError (BottleNotFound bid) = liftIO $ putStrLn $
   "Bottle not found: " <> show bid
 handleGameError (FromBottleIsEmpty bottleId) = liftIO $ putStrLn $
   "Bottle " <> show bottleId <> " is empty, there's nothing to pour"
-handleGameError (ToBottleIsFull bottleId) = liftIO $ putStrLn $
-  "Bottle " <> show bottleId <> " is full"
+handleGameError (ToBottleIsTooFull bottleId) = liftIO $ putStrLn $
+  "Bottle " <> show bottleId <> " is too full"
 handleGameError (ColorsDontMatch c1 c2) = liftIO $ putStrLn $
   "Colors " <> show c1 <> " and " <> show c2 <> " don't match"
 
