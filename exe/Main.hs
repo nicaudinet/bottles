@@ -1,11 +1,9 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Main where
 
 import Control.Monad (when)
 import Control.Monad.State
 import Control.Monad.Except
-import Data.List (group)
+import Data.List (group, intercalate)
 import qualified Data.Map as M
 import Text.Read (readMaybe)
 
@@ -17,7 +15,7 @@ data Color
   | LightGreen
   | DarkGreen
   | Pink
-  | Beige
+  | White
   | Red
   | Orange
   deriving (Show, Eq, Ord, Enum)
@@ -25,7 +23,7 @@ data Color
 type Bottle = [Color]
 type BottleId = Int
 
-type GameState = M.Map BottleId Bottle 
+type Bottles = M.Map BottleId Bottle 
 
 data GameError
   = InvalidInput [String]
@@ -35,14 +33,39 @@ data GameError
   | ToBottleIsTooFull BottleId
   | ColorsDontMatch Color Color
 
-type Game a = ExceptT GameError (StateT GameState IO) a
+instance Show GameError where
+  show (InvalidInput input) =
+    "Invalid input " <> show input <> ". Try again."
+  show (InvalidBottleId bottleId) =
+    "Invalid bottle id: " <> bottleId
+  show (BottleNotFound bid) =
+    "Bottle not found: " <> show bid
+  show (FromBottleIsEmpty bottleId) =
+    "Bottle " <> show bottleId <> " is empty, there's nothing to pour"
+  show (ToBottleIsTooFull bottleId) =
+    "Bottle " <> show bottleId <> " is too full"
+  show (ColorsDontMatch c1 c2) =
+    "Colors " <> show c1 <> " and " <> show c2 <> " don't match"
+
+
+type Game a = ExceptT GameError (StateT Bottles IO) a
 
 data Action = Pour BottleId BottleId
-
 
 headMaybe :: [a] -> Maybe a
 headMaybe [] = Nothing
 headMaybe (x:_) = Just x
+
+untilM :: Monad m => m Bool -> m a -> m ()
+untilM cond action = do
+  c <- cond
+  if c
+  then pure ()
+  else action >> untilM cond action
+
+-----------
+-- Parse --
+-----------
 
 getUserInput :: Game (String, String)
 getUserInput = do
@@ -56,6 +79,17 @@ readBottleId str =
   case readMaybe str of
     Just bottleId -> pure bottleId
     Nothing -> throwError (InvalidBottleId str)
+
+getAction :: Game Action
+getAction = do
+  (x, y) <- getUserInput
+  from <- readBottleId x
+  to <- readBottleId y
+  pure (Pour from to)
+
+------------
+-- Update --
+------------
 
 getBottle :: BottleId -> Game Bottle
 getBottle bottleId = do
@@ -86,54 +120,56 @@ pour from to = do
   -- Pour a color from one bottle to the other
   modify (M.insert from fromTail)
   modify (M.insert to (fromHead <> toBottle))
-
-showBottle :: BottleId -> Bottle -> String
-showBottle bid bottle = show bid <> ": " <> show (map fromEnum bottle)
-
-showBottles :: GameState -> String
-showBottles bottles = unlines $
-     ["---"]
-  <> map (uncurry showBottle) (M.toList bottles)
-  <> ["---"]
-
-getAction :: Game Action
-getAction = do
-  (x, y) <- getUserInput
-  from <- readBottleId x
-  to <- readBottleId y
-  pure (Pour from to)
   
 update :: Action -> Game ()
 update (Pour from to) = pour from to
 
-handleGameError :: GameError -> Game ()
-handleGameError (InvalidInput input) = liftIO $ putStrLn $
-  "Invalid input " <> show input <> ". Try again."
-handleGameError (InvalidBottleId bottleId) = liftIO $ putStrLn $
-  "Invalid bottle id: " <> bottleId
-handleGameError (BottleNotFound bid) = liftIO $ putStrLn $
-  "Bottle not found: " <> show bid
-handleGameError (FromBottleIsEmpty bottleId) = liftIO $ putStrLn $
-  "Bottle " <> show bottleId <> " is empty, there's nothing to pour"
-handleGameError (ToBottleIsTooFull bottleId) = liftIO $ putStrLn $
-  "Bottle " <> show bottleId <> " is too full"
-handleGameError (ColorsDontMatch c1 c2) = liftIO $ putStrLn $
-  "Colors " <> show c1 <> " and " <> show c2 <> " don't match"
+----------
+-- View --
+----------
 
-step :: Game ()
-step = handleError handleGameError $ do
+-- xterm-256color color codes
+-- https://stackabuse.com/how-to-print-colored-text-in-python/
+showColor :: Color -> String
+showColor color = "\x1b[48;5;" <> show (colorCode color) <> "m  \x1b[0m"
+  where
+    colorCode :: Color -> Int
+    colorCode Yellow = 220
+    colorCode LightBlue = 44
+    colorCode DarkBlue = 21
+    colorCode Brown = 130
+    colorCode LightGreen = 47
+    colorCode DarkGreen = 22
+    colorCode Pink = 201
+    colorCode White = 255
+    colorCode Red = 196
+    colorCode Orange = 208
+
+showBottle :: BottleId -> Bottle -> String
+showBottle bid bottle = concat
+  [ if bid < 10 then " " else ""
+  , show bid
+  , ": "
+  , concat (replicate (4 - length bottle) "  ")
+  , concatMap showColor bottle
+  ]
+
+showBottles :: Bottles -> String
+showBottles = intercalate "\n\n" . map (uncurry showBottle) . M.toList
+
+showGame :: Game ()
+showGame = do
   bottles <- get
-  liftIO (putStrLn (showBottles bottles))
-  action <- getAction
-  update action
+  liftIO $ do
+    putStrLn "---"
+    putStrLn (showBottles bottles)
+    putStrLn "---"
 
-runGame :: GameState -> Game () -> IO ()
-runGame initState game = do
-  bottles <- execStateT (runExceptT game) initState
-  putStrLn (showBottles bottles)
-  putStrLn "You win!"
+-------------
+-- Puzzles --
+-------------
 
-exampleEasy :: GameState
+exampleEasy :: Bottles
 exampleEasy = M.fromList . zip [0..] $
   [ [ Red, Red, Red, Yellow ]
   , [ Yellow, Yellow, Red, Yellow ]
@@ -141,24 +177,31 @@ exampleEasy = M.fromList . zip [0..] $
   , []
   ]
 
-exampleHard :: GameState
+exampleHard :: Bottles
 exampleHard = M.fromList . zip [0..] $
   [ [ Yellow, DarkBlue, Brown, LightGreen ]
   , [ Pink, LightGreen, Brown, LightBlue ]
-  , [ LightGreen, Beige, Pink, LightBlue ]
+  , [ LightGreen, White, Pink, LightBlue ]
   , [ Red, DarkBlue, Red, LightBlue ]
-  , [ Beige, Brown, Beige, Orange ]
+  , [ White, Brown, White, Orange ]
   , [ DarkGreen, LightBlue, DarkGreen, Orange ]
   , [ LightGreen, Yellow, DarkGreen, Orange ]
-  , [ Beige, Pink, Pink, DarkBlue ]
+  , [ White, Pink, Pink, DarkBlue ]
   , [ Yellow, DarkBlue, Red, Red ]
   , [ DarkGreen, Brown, Orange, Yellow ]
   , []
   , []
   ]
 
-colorCounts :: GameState -> M.Map Color Int
-colorCounts = M.unionsWith (+) . map (M.fromListWith (+) . map (\c -> (c, 1))) . M.elems
+--------------------
+-- Main game loop --
+--------------------
+
+step :: Game ()
+step = handleError (liftIO . print) $ do
+  showGame
+  action <- getAction
+  update action
 
 validBottle :: Bottle -> Bool
 validBottle [] = True
@@ -166,16 +209,21 @@ validBottle [a,b,c,d] = (a == b) && (b == c) && (c == d)
 validBottle _ = False
 
 gameOver :: Game Bool
-gameOver = do
-  bottles <- get
-  pure $ all validBottle (M.elems bottles)
+gameOver = gets (all validBottle . M.elems)
 
-untilM :: Monad m => m Bool -> m a -> m ()
-untilM cond action = do
-  c <- cond
-  if c
-  then pure ()
-  else action >> untilM cond action
+runGame :: Bottles -> Game () -> IO ()
+runGame initState game = do
+  bottles <- execStateT (runExceptT game) initState
+  putStrLn (showBottles bottles)
+  putStrLn "You win!"
+
+choosePuzzle :: String -> Bottles
+choosePuzzle "easy" = exampleEasy
+choosePuzzle "hard" = exampleHard
+choosePuzzle _ = error "Invalid input"
 
 main :: IO ()
-main = do runGame exampleEasy (untilM gameOver step)
+main = do
+  putStrLn "What puzzle do you want? (easy/hard) "
+  puzzle <- choosePuzzle <$> getLine
+  runGame puzzle (untilM gameOver step)
