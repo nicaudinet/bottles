@@ -1,8 +1,10 @@
 module Main where
 
-import Control.Monad (when)
+import Control.Applicative (liftA2)
+import Control.Monad (when, filterM)
 import Control.Monad.State
 import Control.Monad.Except
+import Data.Either (isRight)
 import Data.List (group, intercalate)
 import qualified Data.Map as M
 import Text.Read (readMaybe)
@@ -29,6 +31,7 @@ data GameError
   = InvalidInput [String]
   | InvalidBottleId String
   | BottleNotFound BottleId
+  | FromAndToAreTheSame BottleId
   | FromBottleIsEmpty BottleId
   | ToBottleIsTooFull BottleId
   | ColorsDontMatch Color Color
@@ -40,6 +43,8 @@ instance Show GameError where
     "Invalid bottle id: " <> bottleId
   show (BottleNotFound bid) =
     "Bottle not found: " <> show bid
+  show (FromAndToAreTheSame bottleId) =
+    "The 'from' bottle cannot be the same as the 'to' bottle: " <> show bottleId
   show (FromBottleIsEmpty bottleId) =
     "Bottle " <> show bottleId <> " is empty, there's nothing to pour"
   show (ToBottleIsTooFull bottleId) =
@@ -87,6 +92,21 @@ getAction = do
   to <- readBottleId y
   pure (Pour from to)
 
+sandbox :: MonadState s m => m a -> m a
+sandbox action = do
+  s <- get
+  result <- action
+  put s
+  pure result
+
+tryAction :: Action -> Game Bool
+tryAction action = isRight <$> sandbox (tryError (update action))
+
+availableActions :: Game [Action]
+availableActions = do
+  bottleIds <- gets M.keys
+  filterM tryAction (liftA2 Pour bottleIds bottleIds)
+
 ------------
 -- Update --
 ------------
@@ -103,6 +123,9 @@ pour from to = do
   -- Get the two bottles
   fromBottle <- getBottle from
   toBottle <- getBottle to
+  -- Check that from and to are different
+  when (from == to) $
+    throwError (FromAndToAreTheSame from)
   -- Check there are colors in the from bottle
   (fromHead, fromTail) <- case group fromBottle of
     [] -> throwError (FromBottleIsEmpty from)
@@ -157,12 +180,28 @@ showBottle bid bottle = concat
 showBottles :: Bottles -> String
 showBottles = intercalate "\n\n" . map (uncurry showBottle) . M.toList
 
+showAction :: (Int, Action) -> String
+showAction (n, (Pour from to)) = concat
+  [ if n < 10 then " " else ""
+  , show n
+  , ": "
+  , show from
+  , " -> "
+  , show to
+  ]
+
+showActions :: [Action] -> String 
+showActions = intercalate "\n" . map showAction . zip [0..]
+
 showGame :: Game ()
 showGame = do
   bottles <- get
+  actions <- availableActions
   liftIO $ do
     putStrLn "---"
     putStrLn (showBottles bottles)
+    putStrLn "---"
+    putStrLn (showActions actions)
     putStrLn "---"
 
 -------------
