@@ -3,9 +3,12 @@ module Bottles.Types
   , BottleId
   , Bottle
   , Bottles
+  , ActionId
+  , Action(..)
+  , Actions
+  , GameState(..)
   , GameError(..)
   , Game
-  , Action(..)
   ) where
 
 import Control.Monad.State
@@ -27,13 +30,21 @@ data Color
 
 type Bottle = [Color]
 type BottleId = Int
-
 type Bottles = M.Map BottleId Bottle
+
+data Action = Pour BottleId BottleId
+type ActionId = Int
+type Actions = M.Map ActionId Action
+
+data GameState = GameState
+  { bottles :: Bottles
+  , actions :: Actions
+  }
 
 data GameError
   = InvalidPuzzleType String
-  | InvalidInput [String]
-  | InvalidBottleId String
+  | InvalidInput String
+  | ActionNotFound ActionId
   | BottleNotFound BottleId
   | FromAndToAreTheSame BottleId
   | FromBottleIsEmpty BottleId
@@ -45,8 +56,8 @@ instance Show GameError where
     "Invalid puzzle type " <> show puzzleType <> ". Try again."
   show (InvalidInput input) =
     "Invalid input " <> show input <> ". Try again."
-  show (InvalidBottleId bottleId) =
-    "Invalid bottle id: " <> bottleId
+  show (ActionNotFound actionId) =
+    "Action id not found in list of available actions: " <> show actionId
   show (BottleNotFound bid) =
     "Bottle not found: " <> show bid
   show (FromAndToAreTheSame bottleId) =
@@ -58,7 +69,4 @@ instance Show GameError where
   show (ColorsDontMatch c1 c2) =
     "Colors " <> show c1 <> " and " <> show c2 <> " don't match"
 
-
-type Game a = ExceptT GameError (StateT Bottles IO) a
-
-data Action = Pour BottleId BottleId
+type Game a = ExceptT GameError (StateT GameState IO) a

@@ -1,13 +1,16 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+
 module Main where
 
 import Control.Monad.State
 import Control.Monad.Except
 import qualified Data.Map as M
 
-import Bottles.Types (Color(..), Bottle, Bottles, Game)
+import Bottles.Types (Color(..), Bottle, Bottles, GameState(..), Game)
 import Bottles.View (showBottles, showGame)
 import Bottles.Parse (getAction)
-import Bottles.Update (update)
+import Bottles.Update (updateActions, updateBottles)
 
 -------------
 -- Puzzles --
@@ -43,9 +46,10 @@ exampleHard = M.fromList . zip [0..] $
 
 step :: Game ()
 step = handleError (liftIO . print) $ do
+  updateActions
   showGame
   action <- getAction
-  update action
+  updateBottles action
 
 validBottle :: Bottle -> Bool
 validBottle [] = True
@@ -53,12 +57,12 @@ validBottle [a,b,c,d] = (a == b) && (b == c) && (c == d)
 validBottle _ = False
 
 gameOver :: Game Bool
-gameOver = gets (all validBottle . M.elems)
+gameOver = gets (all validBottle . M.elems . bottles)
 
-runGame :: Bottles -> Game () -> IO ()
-runGame initBottles game = do
-  bottles <- execStateT (runExceptT game) initBottles
-  putStrLn (showBottles bottles)
+runGame :: GameState -> Game () -> IO ()
+runGame initState game = do
+  finalState <- execStateT (runExceptT game) initState
+  putStrLn (showBottles finalState.bottles)
   putStrLn "You win!"
 
 choosePuzzle :: String -> Bottles
@@ -77,4 +81,5 @@ main :: IO ()
 main = do
   putStrLn "What puzzle do you want? (easy/hard) "
   puzzle <- choosePuzzle <$> getLine
-  runGame puzzle (untilM gameOver step)
+  let initState = GameState { bottles = puzzle, actions = M.empty }
+  runGame initState (untilM gameOver step)

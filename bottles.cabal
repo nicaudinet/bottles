@@ -64,7 +64,6 @@ library
       , Bottles.Types
       , Bottles.View
     -- other-modules:
-    -- other-extensions:
 
 executable bottles
     import: warnings
@@ -77,7 +76,6 @@ executable bottles
       , containers
       , mtl ^>=2.3.1
     -- other-modules:
-    -- other-extensions:
 
 test-suite bottles-test
     import: warnings

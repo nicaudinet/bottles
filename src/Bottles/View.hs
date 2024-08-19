@@ -1,3 +1,6 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+
 module Bottles.View
   ( showBottles
   , showGame
@@ -8,8 +11,7 @@ import Control.Monad.State (get)
 import Data.List (intercalate)
 import qualified Data.Map as M
 
-import Bottles.Types (Color(..), BottleId, Bottle, Bottles, Action(..), Game)
-import Bottles.Parse (availableActions)
+import Bottles.Types (Color(..), BottleId, Bottle, Bottles, ActionId, Action(..), Actions, GameState(..), Game)
 
 -- xterm-256color color codes
 -- https://stackabuse.com/how-to-print-colored-text-in-python/
@@ -40,26 +42,25 @@ showBottle bid bottle = concat
 showBottles :: Bottles -> String
 showBottles = intercalate "\n\n" . map (uncurry showBottle) . M.toList
 
-showAction :: (Int, Action) -> String
-showAction (n, (Pour from to)) = concat
-  [ if n < 10 then " " else ""
-  , show n
+showAction :: ActionId -> Action -> String
+showAction aid (Pour from to) = concat
+  [ if aid < 10 then " " else ""
+  , show aid
   , ": "
   , show from
   , " -> "
   , show to
   ]
 
-showActions :: [Action] -> String
-showActions = intercalate "\n" . map showAction . zip [0..]
+showActions :: Actions -> String
+showActions = intercalate "\n" . map (uncurry showAction) . M.toList
 
 showGame :: Game ()
 showGame = do
-  bottles <- get
-  actions <- availableActions
+  state <- get
   liftIO $ do
     putStrLn "---"
-    putStrLn (showBottles bottles)
+    putStrLn (showBottles state.bottles)
     putStrLn "---"
-    putStrLn (showActions actions)
+    putStrLn (showActions state.actions)
     putStrLn "---"
