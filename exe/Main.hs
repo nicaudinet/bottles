@@ -16,6 +16,13 @@ import Bottles.Update (updateActions, updateBottles)
 -- Puzzles --
 -------------
 
+exampleTrivial :: Bottles
+exampleTrivial = M.fromList . zip [0..] $
+  [ [ Red, Yellow, Yellow, Yellow ]
+  , [ Yellow, Red, Red, Red ]
+  , []
+  ]
+
 exampleEasy :: Bottles
 exampleEasy = M.fromList . zip [0..] $
   [ [ Red, Red, Red, Yellow ]
@@ -66,6 +73,7 @@ runGame initState game = do
   putStrLn "You win!"
 
 choosePuzzle :: String -> Bottles
+choosePuzzle "trivial" = exampleTrivial
 choosePuzzle "easy" = exampleEasy
 choosePuzzle "hard" = exampleHard
 choosePuzzle _ = error "Invalid puzzle type"
@@ -79,7 +87,7 @@ untilM cond action = do
 
 main :: IO ()
 main = do
-  putStrLn "What puzzle do you want? (easy/hard) "
+  putStrLn "What puzzle do you want? (trivial/easy/hard) "
   puzzle <- choosePuzzle <$> getLine
   let initState = GameState { bottles = puzzle, actions = M.empty }
   runGame initState (untilM gameOver step)
