@@ -1,49 +1,39 @@
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Bottles.Update
-  ( updateActions
-  , updateBottles
+  ( availableActions
+  , play
+  , gameOver
   ) where
 
 import Control.Applicative (liftA2)
-import Control.Monad (when, filterM)
-import Control.Monad.Except (throwError, tryError)
-import Control.Monad.State (MonadState, get, gets, put)
+import Control.Monad (when)
+import Control.Monad.Except (runExcept)
+import Control.Monad.Error.Class (MonadError, throwError)
 import Data.Either (isRight)
 import Data.List (group)
 import qualified Data.Map as M
 
-import Bottles.Types (BottleId, Bottle, Bottles, Action(..), Actions, GameState(..), GameError(..), Game)
+import Bottles.Types
+  ( BottleId, Bottle, Bottles, Action(..), Actions, GameState(..), GameError(..))
 
 --------------------
 -- Update actions --
 --------------------
 
-putActions :: Actions -> Game ()
-putActions as = do
-  state <- get
-  put state { actions = as }
+-- | Use the Excpet monad to run an action and check if it throws an error
+tryAction :: Bottles -> Action -> Bool
+tryAction bs a = isRight (runExcept (play a bs))
 
-sandbox :: MonadState s m => m a -> m a
-sandbox action = do
-  s <- get
-  result <- action
-  put s
-  pure result
-
-tryAction :: Action -> Game Bool
-tryAction action = isRight <$> sandbox (tryError (updateBottles action))
-
-availableActions :: Game Actions
-availableActions = do
-  bottleIds <- gets (M.keys . bottles)
-  let allActions = liftA2 Pour bottleIds bottleIds
-  let toMap = M.fromList . zip [0..]
-  toMap <$> filterM tryAction allActions
-
-updateActions :: Game ()
-updateActions = availableActions >>= putActions
+availableActions :: Bottles -> Actions
+availableActions bs =
+  let
+    bottleIds = M.keys bs
+    allActions = liftA2 Pour bottleIds bottleIds
+  in
+    M.fromList (zip [0..] (filter (tryAction bs) allActions))
 
 --------------------
 -- Update bottles --
@@ -53,23 +43,22 @@ headMaybe :: [a] -> Maybe a
 headMaybe [] = Nothing
 headMaybe (x:_) = Just x
 
-getBottle :: BottleId -> Game Bottle
-getBottle bottleId = do
-  state <- get
-  case M.lookup bottleId state.bottles of
+getBottle :: MonadError GameError m => BottleId -> Bottles -> m Bottle
+getBottle bottleId bs = do
+  case M.lookup bottleId bs of
     Just bottle -> pure bottle
     Nothing -> throwError (BottleNotFound bottleId)
 
-modifyBottles :: (Bottles -> Bottles) -> Game ()
-modifyBottles f = do
-  state <- get
-  put state { bottles = f state.bottles }
-
-pour :: BottleId -> BottleId -> Game ()
-pour from to = do
+pour
+  :: MonadError GameError m
+  => BottleId
+  -> BottleId
+  -> Bottles
+  -> m Bottles
+pour from to bs = do
   -- Get the two bottles
-  fromBottle <- getBottle from
-  toBottle <- getBottle to
+  fromBottle <- getBottle from bs
+  toBottle <- getBottle to bs
   -- Check that from and to are different
   when (from == to) $
     throwError (FromAndToAreTheSame from)
@@ -88,8 +77,21 @@ pour from to = do
       when (fromColor /= toColor) $
         throwError (ColorsDontMatch fromColor toColor)
   -- Pour a color from one bottle to the other
-  modifyBottles (M.insert from fromTail)
-  modifyBottles (M.insert to (fromHead <> toBottle))
+  let f1 = M.insert from fromTail
+  let f2 = M.insert to (fromHead <> toBottle)
+  pure . f1 . f2 $ bs
 
-updateBottles :: Action -> Game ()
-updateBottles (Pour from to) = pour from to
+play :: MonadError GameError m => Action -> Bottles -> m Bottles
+play (Pour from to) = pour from to
+
+---------------
+-- Game over --
+---------------
+
+validBottle :: Bottle -> Bool
+validBottle [] = True
+validBottle [a,b,c,d] = (a == b) && (b == c) && (c == d)
+validBottle _ = False
+
+gameOver :: GameState -> Bool
+gameOver = all validBottle . M.elems . bottles

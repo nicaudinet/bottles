@@ -7,10 +7,11 @@ import Control.Monad.State
 import Control.Monad.Except
 import qualified Data.Map as M
 
-import Bottles.Types (Color(..), Bottle, Bottles, GameState(..), Game)
+import Bottles.Types (Color(..), Bottles, Action, GameState(..), Game)
 import Bottles.View (showBottles, showGame)
 import Bottles.Parse (getAction)
-import Bottles.Update (updateActions, updateBottles)
+import Bottles.Update (availableActions, play, gameOver)
+import Bottles.Solver (solver, allSolutions)
 
 -------------
 -- Puzzles --
@@ -51,20 +52,24 @@ exampleHard = M.fromList . zip [0..] $
 -- Main game loop --
 --------------------
 
+updateActions :: Game ()
+updateActions = do
+  gs <- get
+  let as = availableActions gs.bottles
+  put (gs { actions = as })
+
+updateBottles :: Action -> Game ()
+updateBottles action = do
+  gs <- get
+  bs <- play action gs.bottles
+  put (gs { bottles = bs })
+
 step :: Game ()
 step = handleError (liftIO . print) $ do
   updateActions
   showGame
   action <- getAction
   updateBottles action
-
-validBottle :: Bottle -> Bool
-validBottle [] = True
-validBottle [a,b,c,d] = (a == b) && (b == c) && (c == d)
-validBottle _ = False
-
-gameOver :: Game Bool
-gameOver = gets (all validBottle . M.elems . bottles)
 
 runGame :: GameState -> Game () -> IO ()
 runGame initState game = do
@@ -89,5 +94,10 @@ main :: IO ()
 main = do
   putStrLn "What puzzle do you want? (trivial/easy/hard) "
   puzzle <- choosePuzzle <$> getLine
-  let initState = GameState { bottles = puzzle, actions = M.empty }
-  runGame initState (untilM gameOver step)
+  let as = availableActions puzzle
+  let initState = GameState { bottles = puzzle, actions = as }
+  runGame initState (untilM (gets gameOver) step)
+  putStrLn "All possible solutions:"
+  let solutions = allSolutions (solver initState)
+  print (length solutions)
+  mapM_ (putStrLn . showBottles . bottles) solutions

@@ -33,6 +33,7 @@ type BottleId = Int
 type Bottles = M.Map BottleId Bottle
 
 data Action = Pour BottleId BottleId
+  deriving Show
 type ActionId = Int
 type Actions = M.Map ActionId Action
 
