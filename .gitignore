@@ -1,1 +1,4 @@
 dist-newstyle
+*.dot
+*.svg
+output

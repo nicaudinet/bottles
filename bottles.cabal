@@ -58,9 +58,12 @@ library
         base ^>=4.17.2.1
       , containers
       , mtl ^>=2.3.1
+      , process
+      , transformers
     exposed-modules:
         Bottles.Parse
       , Bottles.Solver
+      , Bottles.Solver.Dot
       , Bottles.Update
       , Bottles.Types
       , Bottles.View
