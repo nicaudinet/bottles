@@ -3,7 +3,6 @@ module Bottles.Types
   , BottleId
   , Bottle
   , Bottles
-  , ActionId
   , Action(..)
   , Actions
   , GameState(..)
@@ -34,8 +33,7 @@ type Bottles = M.Map BottleId Bottle
 
 data Action = Pour BottleId BottleId
   deriving Show
-type ActionId = Int
-type Actions = M.Map ActionId Action
+type Actions = [Action]
 
 data GameState = GameState
   { bottles :: Bottles
@@ -46,7 +44,7 @@ data GameState = GameState
 data GameError
   = InvalidPuzzleType String
   | InvalidInput String
-  | ActionNotFound ActionId
+  | ActionNotFound Int
   | BottleNotFound BottleId
   | FromAndToAreTheSame BottleId
   | FromBottleIsEmpty BottleId

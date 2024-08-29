@@ -19,6 +19,10 @@ import qualified Data.Map as M
 import Bottles.Types
   ( BottleId, Bottle, Bottles, Action(..), Actions, GameError(..))
 
+headMaybe :: [a] -> Maybe a
+headMaybe [] = Nothing
+headMaybe (x:_) = Just x
+
 --------------------
 -- Update actions --
 --------------------
@@ -33,15 +37,11 @@ availableActions bs =
     bottleIds = M.keys bs
     allActions = liftA2 Pour bottleIds bottleIds
   in
-    M.fromList (zip [0..] (filter (tryAction bs) allActions))
+    filter (tryAction bs) allActions
 
 --------------------
 -- Update bottles --
 --------------------
-
-headMaybe :: [a] -> Maybe a
-headMaybe [] = Nothing
-headMaybe (x:_) = Just x
 
 getBottle :: MonadError GameError m => BottleId -> Bottles -> m Bottle
 getBottle bottleId bs = do

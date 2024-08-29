@@ -11,7 +11,8 @@ import Control.Monad.State (get)
 import Data.List (intercalate)
 import qualified Data.Map as M
 
-import Bottles.Types (Color(..), BottleId, Bottle, Bottles, ActionId, Action(..), Actions, GameState(..), Game)
+import Bottles.Types
+  ( Color(..), BottleId, Bottle, Bottles, Action(..), Actions, GameState(..), Game)
 
 -- xterm-256color color codes
 -- https://stackabuse.com/how-to-print-colored-text-in-python/
@@ -42,10 +43,10 @@ showBottle bid bottle = concat
 showBottles :: Bottles -> String
 showBottles = intercalate "\n\n" . map (uncurry showBottle) . M.toList
 
-showAction :: ActionId -> Action -> String
-showAction aid (Pour from to) = concat
-  [ if aid < 10 then " " else ""
-  , show aid
+showAction :: Int -> Action -> String
+showAction idx (Pour from to) = concat
+  [ if idx < 10 then " " else ""
+  , show idx
   , ": "
   , show from
   , " -> "
@@ -53,7 +54,7 @@ showAction aid (Pour from to) = concat
   ]
 
 showActions :: Actions -> String
-showActions = intercalate "\n" . map (uncurry showAction) . M.toList
+showActions = intercalate "\n" . zipWith showAction [0..]
 
 showGame :: Game ()
 showGame = do

@@ -6,17 +6,32 @@ module Main where
 import Control.Monad.State
 import Control.Monad.Except
 import qualified Data.Map as M
-import Data.Maybe (fromJust)
+import Text.Read (readMaybe)
 
-import Bottles.Types (Color(..), Bottles, Action, GameState(..), Game)
+import Bottles.Types (Color(..), Bottles, Action, GameState(..), Game, GameError(..))
 import Bottles.View (showBottles, showGame)
-import Bottles.Parse (getAction)
 import Bottles.Update (availableActions, play, gameOver)
 import Bottles.Solver (toSolverState, solver, solution)
+
+(!?) :: [a] -> Int -> Maybe a
+(!?) xs idx = lookup idx (zip [0..] xs)
+
+untilM :: Monad m => m Bool -> m a -> m ()
+untilM cond action = do
+  c <- cond
+  if c
+  then pure ()
+  else action >> untilM cond action
 
 -------------
 -- Puzzles --
 -------------
+
+choosePuzzle :: String -> Bottles
+choosePuzzle "trivial" = puzzleTrivial
+choosePuzzle "easy" = puzzleEasy
+choosePuzzle "hard" = puzzleHard
+choosePuzzle _ = error "Invalid puzzle"
 
 puzzleTrivial :: Bottles
 puzzleTrivial = M.fromList . zip [0..] $
@@ -54,43 +69,34 @@ puzzleHard = M.fromList . zip [0..] $
 -- Main game loop --
 --------------------
 
-updateActions :: Game ()
-updateActions = do
-  gs <- get
-  let as = availableActions gs.bottles
-  put (gs { actions = as })
+getAction :: Game Action
+getAction = do
+  line <- liftIO getLine
+  idx <- case readMaybe line of
+    Nothing -> throwError (InvalidInput line)
+    Just a -> pure a
+  as <- gets actions
+  case as !? idx of
+    Nothing -> throwError (ActionNotFound idx)
+    Just a -> pure a
 
-updateBottles :: Action -> Game ()
-updateBottles action = do
+update :: Action -> Game ()
+update action = do
   gs <- get
   bs <- play action gs.bottles
-  put (gs { bottles = bs })
+  put (gs { bottles = bs, actions = availableActions bs })
 
 step :: Game ()
 step = handleError (liftIO . print) $ do
-  updateActions
   showGame
   action <- getAction
-  updateBottles action
+  update action
 
 runGame :: GameState -> Game () -> IO ()
 runGame initState game = do
   finalState <- execStateT (runExceptT game) initState
   putStrLn (showBottles finalState.bottles)
   putStrLn "You win!"
-
-untilM :: Monad m => m Bool -> m a -> m ()
-untilM cond action = do
-  c <- cond
-  if c
-  then pure ()
-  else action >> untilM cond action
-
-choosePuzzle :: String -> Bottles
-choosePuzzle "trivial" = puzzleTrivial
-choosePuzzle "easy" = puzzleEasy
-choosePuzzle "hard" = puzzleHard
-choosePuzzle _ = error "Invalid puzzle"
 
 main :: IO ()
 main = do
@@ -110,8 +116,7 @@ main = do
       let computeTree = solver (toSolverState initState)
       putStrLn "---"
       putStrLn "Solution:"
-      mapM_ print (fromJust $ solution computeTree)
+      maybe (putStrLn "No solution found") (mapM_ print) (solution computeTree)
       -- putStrLn "All solutions:"
       -- mapM_ (print . history) (allSolutions computeTree)
-      -- void $ printDot "computeTree" computeTree
     _ -> error "Invalid choice (choose 1 or 2)"
