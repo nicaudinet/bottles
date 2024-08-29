@@ -3,7 +3,8 @@
 {-# LANGUAGE InstanceSigs #-}
 
 module Bottles.Solver
-  ( solver
+  ( Backtrack(..)
+  , solver
   , allSolutions
   ) where
 
@@ -13,9 +14,10 @@ import Control.Monad.Except (runExcept)
 import qualified Data.Map as M
 
 data Backtrack a
-  = Return a
-  | Fail
+  = Fail
+  | Return a
   | Backtrack a :|: Backtrack a
+  deriving Show
 
 instance Functor Backtrack where
   fmap :: (a -> b) -> Backtrack a -> Backtrack b
@@ -41,18 +43,21 @@ instance Monad Backtrack where
   Fail >>= _ = Fail
   (a :|: b) >>= r = (a >>= r) :|: (b >>= r)
 
-select :: [a] -> Backtrack a
-select = foldr (:|:) Fail . map Return
+type Solver a = Backtrack a
 
-solver :: GameState -> Backtrack GameState
+select :: [a] -> Backtrack a
+select [] = Fail
+select (a:as) = foldr (:|:) (Return a) (map Return as)
+
+solver :: GameState -> Solver GameState
 solver gs
-  | M.null gs.actions = Fail
   | gameOver gs = Return gs
+  | M.null gs.actions = Fail
   | otherwise = do
-    action <- select (M.elems gs.actions)
-    case runExcept (play action gs.bottles) of
-      Left _ -> Fail
-      Right bs -> solver (gs { bottles = bs, actions = availableActions bs })
+      action <- select (M.elems gs.actions)
+      case runExcept (play action gs.bottles) of
+        Left _ -> Fail
+        Right bs -> solver (gs { bottles = bs, actions = availableActions bs })
 
 allSolutions :: Backtrack GameState -> [GameState]
 allSolutions Fail = []

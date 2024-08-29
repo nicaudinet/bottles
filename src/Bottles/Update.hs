@@ -66,6 +66,9 @@ pour from to bs = do
   (fromHead, fromTail) <- case group fromBottle of
     [] -> throwError (FromBottleIsEmpty from)
     (x:xs) -> pure (x, concat xs)
+  -- Check we're not just swapping bottles
+  when (null fromTail && null toBottle) $
+    throwError NoOpAction
   -- Check there's space in the to bottle
   when (length toBottle > 4 - length fromHead) $
     throwError (ToBottleIsTooFull to)

@@ -41,6 +41,7 @@ data GameState = GameState
   { bottles :: Bottles
   , actions :: Actions
   }
+  deriving Show
 
 data GameError
   = InvalidPuzzleType String
@@ -51,6 +52,7 @@ data GameError
   | FromBottleIsEmpty BottleId
   | ToBottleIsTooFull BottleId
   | ColorsDontMatch Color Color
+  | NoOpAction
 
 instance Show GameError where
   show (InvalidPuzzleType puzzleType) =
@@ -69,5 +71,7 @@ instance Show GameError where
     "Bottle " <> show bottleId <> " is too full"
   show (ColorsDontMatch c1 c2) =
     "Colors " <> show c1 <> " and " <> show c2 <> " don't match"
+  show NoOpAction =
+    "Action does nothing useful"
 
 type Game a = ExceptT GameError (StateT GameState IO) a

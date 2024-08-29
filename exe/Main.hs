@@ -12,28 +12,30 @@ import Bottles.View (showBottles, showGame)
 import Bottles.Parse (getAction)
 import Bottles.Update (availableActions, play, gameOver)
 import Bottles.Solver (solver, allSolutions)
+import Bottles.Solver.Dot (printDot)
 
 -------------
 -- Puzzles --
 -------------
 
-exampleTrivial :: Bottles
-exampleTrivial = M.fromList . zip [0..] $
+puzzleTrivial :: Bottles
+puzzleTrivial = M.fromList . zip [0..] $
   [ [ Red, Yellow, Yellow, Yellow ]
   , [ Yellow, Red, Red, Red ]
   , []
+  , []
   ]
 
-exampleEasy :: Bottles
-exampleEasy = M.fromList . zip [0..] $
+puzzleEasy :: Bottles
+puzzleEasy = M.fromList . zip [0..] $
   [ [ Red, Red, Red, Yellow ]
   , [ Yellow, Yellow, Red, Yellow ]
   , []
   , []
   ]
 
-exampleHard :: Bottles
-exampleHard = M.fromList . zip [0..] $
+puzzleHard :: Bottles
+puzzleHard = M.fromList . zip [0..] $
   [ [ Yellow, DarkBlue, Brown, LightGreen ]
   , [ Pink, LightGreen, Brown, LightBlue ]
   , [ LightGreen, White, Pink, LightBlue ]
@@ -78,9 +80,9 @@ runGame initState game = do
   putStrLn "You win!"
 
 choosePuzzle :: String -> Bottles
-choosePuzzle "trivial" = exampleTrivial
-choosePuzzle "easy" = exampleEasy
-choosePuzzle "hard" = exampleHard
+choosePuzzle "trivial" = puzzleTrivial
+choosePuzzle "easy" = puzzleEasy
+choosePuzzle "hard" = puzzleHard
 choosePuzzle _ = error "Invalid puzzle type"
 
 untilM :: Monad m => m Bool -> m a -> m ()
@@ -92,12 +94,17 @@ untilM cond action = do
 
 main :: IO ()
 main = do
-  putStrLn "What puzzle do you want? (trivial/easy/hard) "
-  puzzle <- choosePuzzle <$> getLine
+  let puzzle = puzzleHard
   let as = availableActions puzzle
-  let initState = GameState { bottles = puzzle, actions = as }
-  runGame initState (untilM (gets gameOver) step)
-  putStrLn "All possible solutions:"
-  let solutions = allSolutions (solver initState)
-  print (length solutions)
-  mapM_ (putStrLn . showBottles . bottles) solutions
+  let init = GameState { bottles = puzzle, actions = as }
+  let computeTree = solver init
+  printDot "computeTree" computeTree
+  pure ()
+
+-- main :: IO ()
+-- main = do
+--   putStrLn "What puzzle do you want? (trivial/easy/hard) "
+--   puzzle <- choosePuzzle <$> getLine
+--   let as = availableActions puzzle
+--   let initState = GameState { bottles = puzzle, actions = as }
+--   runGame initState (untilM (gets gameOver) step)
