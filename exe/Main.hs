@@ -3,17 +3,16 @@
 
 module Main where
 
-import Control.Monad (void)
 import Control.Monad.State
 import Control.Monad.Except
 import qualified Data.Map as M
+import Data.Maybe (fromJust)
 
 import Bottles.Types (Color(..), Bottles, Action, GameState(..), Game)
 import Bottles.View (showBottles, showGame)
 import Bottles.Parse (getAction)
 import Bottles.Update (availableActions, play, gameOver)
-import Bottles.Solver (SolverState(history), toSolverState, solver, solution, allSolutions)
-import Bottles.Solver.Dot (printDot)
+import Bottles.Solver (toSolverState, solver, solution)
 
 -------------
 -- Puzzles --
@@ -80,12 +79,6 @@ runGame initState game = do
   putStrLn (showBottles finalState.bottles)
   putStrLn "You win!"
 
-choosePuzzle :: String -> Bottles
-choosePuzzle "trivial" = puzzleTrivial
-choosePuzzle "easy" = puzzleEasy
-choosePuzzle "hard" = puzzleHard
-choosePuzzle _ = error "Invalid puzzle type"
-
 untilM :: Monad m => m Bool -> m a -> m ()
 untilM cond action = do
   c <- cond
@@ -93,22 +86,32 @@ untilM cond action = do
   then pure ()
   else action >> untilM cond action
 
+choosePuzzle :: String -> Bottles
+choosePuzzle "trivial" = puzzleTrivial
+choosePuzzle "easy" = puzzleEasy
+choosePuzzle "hard" = puzzleHard
+choosePuzzle _ = error "Invalid puzzle"
+
 main :: IO ()
 main = do
-  let puzzle = puzzleHard
+  putStrLn "What puzzle do you want to solve? (trivial/easy/hard)"
+  puzzle <- choosePuzzle <$> getLine
   let as = availableActions puzzle
-  let initGameState = GameState { bottles = puzzle, actions = as }
-  let computeTree = solver (toSolverState initGameState)
-  putStrLn "Solution:"
-  print (solution computeTree)
-  putStrLn "All solutions:"
-  mapM_ (print . history) (allSolutions computeTree)
-  void $ printDot "computeTree" computeTree
-
--- main :: IO ()
--- main = do
---   putStrLn "What puzzle do you want? (trivial/easy/hard) "
---   puzzle <- choosePuzzle <$> getLine
---   let as = availableActions puzzle
---   let initState = GameState { bottles = puzzle, actions = as }
---   runGame initState (untilM (gets gameOver) step)
+  let initState = GameState { bottles = puzzle, actions = as }
+  putStrLn "---"
+  putStrLn "What do you want to do? (1/2)"
+  putStrLn "1: solve the puzzle yourself"
+  putStrLn "2: let the computer solve the puzzle"
+  putStrLn "---"
+  choice <- getLine
+  case choice of
+    "1" -> runGame initState (untilM (gets (gameOver . bottles)) step)
+    "2" -> do
+      let computeTree = solver (toSolverState initState)
+      putStrLn "---"
+      putStrLn "Solution:"
+      mapM_ print (fromJust $ solution computeTree)
+      -- putStrLn "All solutions:"
+      -- mapM_ (print . history) (allSolutions computeTree)
+      -- void $ printDot "computeTree" computeTree
+    _ -> error "Invalid choice (choose 1 or 2)"
