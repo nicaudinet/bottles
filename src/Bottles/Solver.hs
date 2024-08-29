@@ -4,12 +4,16 @@
 
 module Bottles.Solver
   ( Backtrack(..)
+  , SolverState(..)
+  , toSolverState
   , solver
+  , solution
   , allSolutions
   ) where
 
-import Bottles.Types (GameState(..))
+import Bottles.Types (Bottles, Action, Actions, GameState(..))
 import Bottles.Update (availableActions, play, gameOver)
+import Control.Applicative ((<|>))
 import Control.Monad.Except (runExcept)
 import qualified Data.Map as M
 
@@ -45,21 +49,38 @@ instance Monad Backtrack where
 
 type Solver a = Backtrack a
 
+data SolverState = SolverState
+  { bottles :: Bottles
+  , history :: [Action]
+  }
+  deriving Show
+
+toSolverState :: GameState -> SolverState
+toSolverState gs = SolverState { bottles = gs.bottles, history = [] }
+
 select :: [a] -> Backtrack a
 select [] = Fail
 select (a:as) = foldr (:|:) (Return a) (map Return as)
 
-solver :: GameState -> Solver GameState
-solver gs
-  | gameOver gs = Return gs
-  | M.null gs.actions = Fail
+solver :: SolverState -> Solver SolverState
+solver state
+  | gameOver state.bottles = Return state
+  | M.null possibleActions = Fail
   | otherwise = do
-      action <- select (M.elems gs.actions)
-      case runExcept (play action gs.bottles) of
+      action <- select (M.elems possibleActions)
+      case runExcept (play action state.bottles) of
         Left _ -> Fail
-        Right bs -> solver (gs { bottles = bs, actions = availableActions bs })
+        Right bs -> solver (state { bottles = bs, history = action : state.history })
+  where
+    possibleActions :: Actions
+    possibleActions = availableActions state.bottles
 
-allSolutions :: Backtrack GameState -> [GameState]
+solution :: Solver SolverState -> Maybe [Action]
+solution Fail = Nothing
+solution (Return state) = Just (reverse state.history)
+solution (a :|: b) = solution a <|> solution b
+
+allSolutions :: Solver SolverState -> [SolverState]
 allSolutions Fail = []
 allSolutions (Return a) = [a]
-allSolutions (a :|: b) = allSolutions a ++ allSolutions b
+allSolutions (a :|: b) = allSolutions a <> allSolutions b

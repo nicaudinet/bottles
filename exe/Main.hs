@@ -3,6 +3,7 @@
 
 module Main where
 
+import Control.Monad (void)
 import Control.Monad.State
 import Control.Monad.Except
 import qualified Data.Map as M
@@ -11,7 +12,7 @@ import Bottles.Types (Color(..), Bottles, Action, GameState(..), Game)
 import Bottles.View (showBottles, showGame)
 import Bottles.Parse (getAction)
 import Bottles.Update (availableActions, play, gameOver)
-import Bottles.Solver (solver, allSolutions)
+import Bottles.Solver (SolverState(history), toSolverState, solver, solution, allSolutions)
 import Bottles.Solver.Dot (printDot)
 
 -------------
@@ -96,10 +97,13 @@ main :: IO ()
 main = do
   let puzzle = puzzleHard
   let as = availableActions puzzle
-  let init = GameState { bottles = puzzle, actions = as }
-  let computeTree = solver init
-  printDot "computeTree" computeTree
-  pure ()
+  let initGameState = GameState { bottles = puzzle, actions = as }
+  let computeTree = solver (toSolverState initGameState)
+  putStrLn "Solution:"
+  print (solution computeTree)
+  putStrLn "All solutions:"
+  mapM_ (print . history) (allSolutions computeTree)
+  void $ printDot "computeTree" computeTree
 
 -- main :: IO ()
 -- main = do

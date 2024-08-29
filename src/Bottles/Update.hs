@@ -17,7 +17,7 @@ import Data.List (group)
 import qualified Data.Map as M
 
 import Bottles.Types
-  ( BottleId, Bottle, Bottles, Action(..), Actions, GameState(..), GameError(..))
+  ( BottleId, Bottle, Bottles, Action(..), Actions, GameError(..))
 
 --------------------
 -- Update actions --
@@ -96,5 +96,5 @@ validBottle [] = True
 validBottle [a,b,c,d] = (a == b) && (b == c) && (c == d)
 validBottle _ = False
 
-gameOver :: GameState -> Bool
-gameOver = all validBottle . M.elems . bottles
+gameOver :: Bottles -> Bool
+gameOver = all validBottle . M.elems

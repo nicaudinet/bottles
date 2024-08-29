@@ -3,8 +3,8 @@ module Bottles.Solver.Dot
   , printDot
   ) where
 
-import Bottles.Solver (Backtrack(..))
-import Bottles.Types (Color, GameState(..))
+import Bottles.Solver (Backtrack(..), SolverState(..))
+import Bottles.Types (Color)
 import Control.Monad.State (State, get, put, execState)
 import qualified Data.Map as M
 import System.Process (callProcess)
@@ -19,7 +19,7 @@ data DotState = DotState
   }
   deriving Show
 type Dot a = State DotState a
-type ComputationTree = Backtrack GameState
+type ComputationTree = Backtrack SolverState
 
 addNode :: String -> Dot NodeId
 addNode label = do
@@ -45,12 +45,12 @@ showBottle :: [Color] -> String
 showBottle [] = "_"
 showBottle (c:_) = [head (show c)]
 
-showGameState :: GameState -> String
-showGameState gs = concatMap showBottle (M.elems (bottles gs))
+showSolverState :: SolverState -> String
+showSolverState = concatMap showBottle . M.elems . bottles
 
 toDot :: ComputationTree -> Dot NodeId
 toDot Fail = addNode "Fail"
-toDot (Return a) = addNode (showGameState a)
+toDot (Return a) = addNode (showSolverState a)
 toDot (a :|: b) = do
   parent <- addNode ":|:"
   left <- toDot a
