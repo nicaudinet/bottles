@@ -16,12 +16,9 @@ import Data.Either (isRight)
 import Data.List (group)
 import qualified Data.Map as M
 
+import Bottles.Utils (headMaybe)
 import Bottles.Types
   ( BottleId, Bottle, Bottles, Action(..), Actions, GameError(..))
-
-headMaybe :: [a] -> Maybe a
-headMaybe [] = Nothing
-headMaybe (x:_) = Just x
 
 --------------------
 -- Update actions --

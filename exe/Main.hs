@@ -13,16 +13,6 @@ import Bottles.View (showBottles, showGame)
 import Bottles.Update (availableActions, play, gameOver)
 import Bottles.Solver (toSolverState, solver, solution)
 
-(!?) :: [a] -> Int -> Maybe a
-(!?) xs idx = lookup idx (zip [0..] xs)
-
-untilM :: Monad m => m Bool -> m a -> m ()
-untilM cond action = do
-  c <- cond
-  if c
-  then pure ()
-  else action >> untilM cond action
-
 -------------
 -- Puzzles --
 -------------
@@ -64,6 +54,7 @@ puzzleHard = M.fromList . zip [0..] $
   , []
   , []
   ]
+import Bottles.Utils ((!?), untilM)
 
 --------------------
 -- Main game loop --

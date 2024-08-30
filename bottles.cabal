@@ -65,6 +65,7 @@ library
       , Bottles.Update
       , Bottles.Types
       , Bottles.View
+      , Bottles.Utils
     -- other-modules:
 
 executable bottles
