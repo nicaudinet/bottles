@@ -11,7 +11,6 @@ import Text.Read (readMaybe)
 import Bottles.Types (Color(..), Bottles, Action, GameState(..), Game, GameError(..))
 import Bottles.View (showBottles, showGame)
 import Bottles.Update (availableActions, play, gameOver)
-import Bottles.Solver (toSolverState, solver, solution)
 
 -------------
 -- Puzzles --
@@ -55,6 +54,7 @@ puzzleHard = M.fromList . zip [0..] $
   , []
   ]
 import Bottles.Utils ((!?), untilM)
+import Bottles.Solver (solve)
 
 --------------------
 -- Main game loop --
@@ -104,10 +104,10 @@ main = do
   case choice of
     "1" -> runGame initState (untilM (gets (gameOver . bottles)) step)
     "2" -> do
-      let computeTree = solver (toSolverState initState)
       putStrLn "---"
       putStrLn "Solution:"
-      maybe (putStrLn "No solution found") (mapM_ print) (solution computeTree)
-      -- putStrLn "All solutions:"
-      -- mapM_ (print . history) (allSolutions computeTree)
+      maybe
+        (putStrLn "No solution found")
+        (mapM_ print)
+        (solve initState.bottles)
     _ -> error "Invalid choice (choose 1 or 2)"

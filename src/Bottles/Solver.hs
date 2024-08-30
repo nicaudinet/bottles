@@ -6,10 +6,11 @@ module Bottles.Solver
   ( SolverState(..)
   , toSolverState
   , solver
-  , solution
+  , solve
   ) where
 
-import Bottles.Types (Bottles, Action, Actions, GameState(..))
+import Bottles.Types (Bottles, Action, Actions)
+import Bottles.Utils (headMaybe)
 import Bottles.Update (availableActions, play, gameOver)
 import Control.Monad (MonadPlus, mzero, msum)
 import Control.Monad.Except (runExcept)
@@ -20,12 +21,8 @@ data SolverState = SolverState
   }
   deriving Show
 
-toSolverState :: GameState -> SolverState
-toSolverState gs =
-  SolverState
-    { bottles = gs.bottles
-    , history = []
-    }
+toSolverState :: Bottles -> SolverState
+toSolverState bs = SolverState { bottles = bs , history = [] }
 
 choose :: MonadPlus m => [a] -> m a
 choose = msum . map pure
@@ -47,6 +44,5 @@ solver state
     possibleActions :: Actions
     possibleActions = availableActions state.bottles
 
-solution :: [SolverState] -> Maybe Actions
-solution [] = Nothing
-solution (a:_) = Just (reverse a.history)
+solve :: Bottles -> Maybe Actions
+solve = fmap (reverse . history) . headMaybe . solver . toSolverState
