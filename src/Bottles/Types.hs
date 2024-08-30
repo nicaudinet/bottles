@@ -16,15 +16,16 @@ import qualified Data.Map as M
 
 data Color
   = Yellow
-  | LightBlue
-  | DarkBlue
-  | Brown
-  | LightGreen
-  | DarkGreen
-  | Pink
   | White
   | Red
+  | LightBlue
+  | LightGreen
+  | Pink
+  | Brown
+  | DarkGreen
   | Orange
+  | DarkBlue
+  | DarkRed
   deriving (Show, Eq, Ord, Enum)
 
 type Bottle = [Color]

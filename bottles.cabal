@@ -58,9 +58,11 @@ library
         base ^>=4.17
       , containers
       , mtl ^>=2.3.1
+      , MonadRandom
       , process
       , transformers
     exposed-modules:
+      , Bottles.Create
       , Bottles.Solver
       , Bottles.Update
       , Bottles.Types

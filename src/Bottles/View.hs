@@ -12,7 +12,7 @@ import Data.List (intercalate, unfoldr)
 import qualified Data.Map as M
 
 import Bottles.Types
-  ( Color(..), Bottles, Action(..), Actions, GameState(..), Game)
+  (Color(..), Bottles, Action(..), Actions, GameState(..), Game)
 
 data Square = Empty | Separator | Full Color
 type Row = [Square]
@@ -49,6 +49,7 @@ showColor color = "\x1b[48;5;" <> show (colorCode color) <> "m  \x1b[0m"
     colorCode White = 255
     colorCode Red = 196
     colorCode Orange = 208
+    colorCode DarkRed = 88
 
 showSquare :: Square -> String
 showSquare Empty = "  "

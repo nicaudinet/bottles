@@ -5,56 +5,14 @@ module Main where
 
 import Control.Monad.State
 import Control.Monad.Except
-import qualified Data.Map as M
 import Text.Read (readMaybe)
 
-import Bottles.Types (Color(..), Bottles, Action, GameState(..), Game, GameError(..))
+import Bottles.Types (Action, GameState(..), Game, GameError(..))
 import Bottles.View (showBottles, showGame)
 import Bottles.Update (availableActions, play, gameOver)
-
--------------
--- Puzzles --
--------------
-
-choosePuzzle :: String -> Bottles
-choosePuzzle "trivial" = puzzleTrivial
-choosePuzzle "easy" = puzzleEasy
-choosePuzzle "hard" = puzzleHard
-choosePuzzle _ = error "Invalid puzzle"
-
-puzzleTrivial :: Bottles
-puzzleTrivial = M.fromList . zip [0..] $
-  [ [ Red, Yellow, Yellow, Yellow ]
-  , [ Yellow, Red, Red, Red ]
-  , []
-  , []
-  ]
-
-puzzleEasy :: Bottles
-puzzleEasy = M.fromList . zip [0..] $
-  [ [ Red, Red, Red, Yellow ]
-  , [ Yellow, Yellow, Red, Yellow ]
-  , []
-  , []
-  ]
-
-puzzleHard :: Bottles
-puzzleHard = M.fromList . zip [0..] $
-  [ [ Yellow, DarkBlue, Brown, LightGreen ]
-  , [ Pink, LightGreen, Brown, LightBlue ]
-  , [ LightGreen, White, Pink, LightBlue ]
-  , [ Red, DarkBlue, Red, LightBlue ]
-  , [ White, Brown, White, Orange ]
-  , [ DarkGreen, LightBlue, DarkGreen, Orange ]
-  , [ LightGreen, Yellow, DarkGreen, Orange ]
-  , [ White, Pink, Pink, DarkBlue ]
-  , [ Yellow, DarkBlue, Red, Red ]
-  , [ DarkGreen, Brown, Orange, Yellow ]
-  , []
-  , []
-  ]
 import Bottles.Utils ((!?), untilM)
 import Bottles.Solver (solve)
+import Bottles.Create (PuzzleSize(..), createPuzzle)
 
 --------------------
 -- Main game loop --
@@ -89,10 +47,17 @@ runGame initState game = do
   putStrLn (showBottles finalState.bottles)
   putStrLn "You win!"
 
+parsePuzzle :: String -> PuzzleSize
+parsePuzzle "small" = Small
+parsePuzzle "medium" = Medium
+parsePuzzle "large" = Large
+parsePuzzle _ = error "Invalid puzzle size (choose small, medium, or large)"
+
 main :: IO ()
 main = do
-  putStrLn "What puzzle do you want to solve? (trivial/easy/hard)"
-  puzzle <- choosePuzzle <$> getLine
+  putStrLn "What puzzle do you want to solve? (small/medium/large)"
+  size <- parsePuzzle <$> getLine
+  puzzle <- createPuzzle size
   let as = availableActions puzzle
   let initState = GameState { bottles = puzzle, actions = as }
   putStrLn "---"
