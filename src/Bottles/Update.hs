@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedRecordDot #-}
-{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 
 module Bottles.Update

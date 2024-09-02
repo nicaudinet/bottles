@@ -1,13 +1,10 @@
-{-# LANGUAGE OverloadedRecordDot #-}
-{-# LANGUAGE DuplicateRecordFields #-}
-
 module Main where
 
 import Control.Monad.State
 import Control.Monad.Except
 import Text.Read (readMaybe)
 
-import Bottles.Types (Action, GameState(..), Game, GameError(..))
+import Bottles.Types (Action, Actions, Bottles, GameError(..))
 import Bottles.View (showBottles, showGame)
 import Bottles.Update (availableActions, play, gameOver)
 import Bottles.Utils ((!?), untilM)
@@ -18,33 +15,27 @@ import Bottles.Create (PuzzleSize(..), createPuzzle)
 -- Main game loop --
 --------------------
 
-getAction :: Game Action
-getAction = do
-  line <- liftIO getLine
-  idx <- case readMaybe line of
-    Nothing -> throwError (InvalidInput line)
-    Just a -> pure a
-  as <- gets actions
-  case as !? idx of
-    Nothing -> throwError (ActionNotFound idx)
-    Just a -> pure a
+type Game a = ExceptT GameError (StateT Bottles IO) a
 
-update :: Action -> Game ()
-update action = do
-  gs <- get
-  bs <- play action gs.bottles
-  put (gs { bottles = bs, actions = availableActions bs })
+getAction :: Actions -> Game Action
+getAction actions = do
+  line <- liftIO getLine
+  idx <- maybe (throwError (InvalidInput line)) pure (readMaybe line)
+  maybe (throwError (ActionNotFound idx)) pure (actions !? idx)
 
 step :: Game ()
 step = handleError (liftIO . print) $ do
-  showGame
-  action <- getAction
-  update action
+  bottles <- get
+  let actions = availableActions bottles
+  liftIO (putStrLn (showGame bottles actions))
+  action <- getAction actions
+  newBottles <- play action bottles 
+  put newBottles
 
-runGame :: GameState -> Game () -> IO ()
-runGame initState game = do
-  finalState <- execStateT (runExceptT game) initState
-  putStrLn (showBottles finalState.bottles)
+runGame :: Bottles -> Game () -> IO ()
+runGame startBottles game = do
+  endBottles <- execStateT (runExceptT game) startBottles
+  putStrLn (showBottles endBottles)
   putStrLn "You win!"
 
 parsePuzzle :: String -> PuzzleSize
@@ -58,8 +49,6 @@ main = do
   putStrLn "What puzzle do you want to solve? (small/medium/large)"
   size <- parsePuzzle <$> getLine
   puzzle <- createPuzzle size
-  let as = availableActions puzzle
-  let initState = GameState { bottles = puzzle, actions = as }
   putStrLn "---"
   putStrLn "What do you want to do? (1/2)"
   putStrLn "1: solve the puzzle yourself"
@@ -67,12 +56,12 @@ main = do
   putStrLn "---"
   choice <- getLine
   case choice of
-    "1" -> runGame initState (untilM (gets (gameOver . bottles)) step)
+    "1" -> runGame puzzle (untilM (gets gameOver) step)
     "2" -> do
       putStrLn "---"
       putStrLn "Solution:"
       maybe
         (putStrLn "No solution found")
         (mapM_ print)
-        (solve initState.bottles)
+        (solve puzzle)
     _ -> error "Invalid choice (choose 1 or 2)"

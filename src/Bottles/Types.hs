@@ -5,13 +5,9 @@ module Bottles.Types
   , Bottles
   , Action(..)
   , Actions
-  , GameState(..)
   , GameError(..)
-  , Game
   ) where
 
-import Control.Monad.State
-import Control.Monad.Except
 import qualified Data.Map as M
 
 data Color
@@ -35,12 +31,6 @@ type Bottles = M.Map BottleId Bottle
 data Action = Pour BottleId BottleId
   deriving Show
 type Actions = [Action]
-
-data GameState = GameState
-  { bottles :: Bottles
-  , actions :: Actions
-  }
-  deriving Show
 
 data GameError
   = InvalidPuzzleType String
@@ -72,5 +62,3 @@ instance Show GameError where
     "Colors " <> show c1 <> " and " <> show c2 <> " don't match"
   show NoOpAction =
     "Action does nothing useful"
-
-type Game a = ExceptT GameError (StateT GameState IO) a

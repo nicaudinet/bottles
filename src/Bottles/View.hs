@@ -1,18 +1,11 @@
-{-# LANGUAGE OverloadedRecordDot #-}
-{-# LANGUAGE DuplicateRecordFields #-}
-
 module Bottles.View
   ( showBottles
   , showGame
   ) where
 
-import Control.Monad.IO.Class (liftIO)
-import Control.Monad.State (get)
+import Bottles.Types (Color(..), Bottles, Action(..), Actions)
 import Data.List (intercalate, unfoldr)
 import qualified Data.Map as M
-
-import Bottles.Types
-  (Color(..), Bottles, Action(..), Actions, GameState(..), Game)
 
 data Square = Empty | Separator | Full Color
 type Row = [Square]
@@ -93,14 +86,13 @@ showAction idx (Pour from to) = concat
   ]
 
 showActions :: Actions -> String
-showActions = intercalate "\n" . zipWith showAction [0..]
+showActions = intercalate "\n" . zipWith showAction [0..] 
 
-showGame :: Game ()
-showGame = do
-  state <- get
-  liftIO $ do
-    putStrLn "---"
-    putStrLn (showBottles state.bottles)
-    putStrLn "---"
-    putStrLn (showActions state.actions)
-    putStrLn "---"
+showGame :: Bottles -> Actions -> String
+showGame bottles actions = unlines
+  [ "---"
+  , showBottles bottles
+  , "---"
+  , showActions actions
+  , "---"
+  ]
