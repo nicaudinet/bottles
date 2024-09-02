@@ -7,7 +7,7 @@ import Text.Read (readMaybe)
 import Bottles.Types (Action, Actions, Bottles, GameError(..))
 import Bottles.View (showBottles, showGame)
 import Bottles.Update (availableActions, play, gameOver)
-import Bottles.Utils ((!?), untilM)
+import Bottles.Utils ((!?), untilM, shuffle)
 import Bottles.Solver (solve)
 import Bottles.Create (PuzzleSize(..), createPuzzle)
 
@@ -26,7 +26,7 @@ getAction actions = do
 step :: Game ()
 step = handleError (liftIO . print) $ do
   bottles <- get
-  let actions = availableActions bottles
+  actions <- liftIO (shuffle (availableActions bottles))
   liftIO (putStrLn (showGame bottles actions))
   action <- getAction actions
   newBottles <- play action bottles 

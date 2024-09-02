@@ -2,7 +2,12 @@ module Bottles.Utils
   ( headMaybe
   , (!?)
   , untilM
+  , shuffle
   ) where
+
+import Control.Monad.Random (MonadRandom, getRandom, replicateM)
+import Data.List (sortBy)
+import Data.Ord (comparing)
 
 headMaybe :: [a] -> Maybe a
 headMaybe [] = Nothing
@@ -17,3 +22,8 @@ untilM cond action = do
   if c
   then pure ()
   else action >> untilM cond action
+
+shuffle :: MonadRandom m => [a] -> m [a]
+shuffle xs = do
+  idxs <- replicateM (length xs) getRandom
+  pure (map fst (sortBy (comparing snd) (zip xs (idxs :: [Int]))))
