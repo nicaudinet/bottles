@@ -4,7 +4,7 @@ module Bottles.View
   , showGame
   ) where
 
-import Bottles.Types (Pour(..), Color(..), Bottle, Bottles, Action(..))
+import Bottles.Model (Pour(..), Color(..), Bottle, Bottles)
 import Bottles.Utils (headMaybe, tailSafe)
 import Data.List (intercalate, unfoldr)
 import qualified Data.Map as M
@@ -83,14 +83,10 @@ showPour idx (Pour from to) = concat
   , show to
   ]
 
-showAction :: Int -> Action -> String
-showAction idx (Move pour) = showPour idx pour
-showAction _ Backtrack = " B: Backtrack"
+showActions :: [Pour] -> String
+showActions = intercalate "\n" . zipWith showPour [0..] 
 
-showActions :: [Action] -> String
-showActions = intercalate "\n" . zipWith showAction [0..] 
-
-showGame :: Bottles -> [Action] -> String
+showGame :: Bottles -> [Pour] -> String
 showGame bottles actions = intercalate "\n"
   [ "---"
   , showBottles bottles

@@ -67,7 +67,7 @@ library
       , Bottles.Parse
       , Bottles.Solver
       , Bottles.Update
-      , Bottles.Types
+      , Bottles.Model
       , Bottles.View
       , Bottles.Utils
     -- other-modules:

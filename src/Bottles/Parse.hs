@@ -1,17 +1,16 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module Bottles.Parse
-  ( getAction
+  ( getPour
   ) where
 
-import Bottles.Types (Pour(..), Action(..), GameError(..))
+import Bottles.Model (Pour(..), GameError(..))
 import Control.Monad.Error.Class (MonadError, throwError)
 import Data.List.Split (splitOn)
 import Text.Read (readMaybe)
 
-parseAction :: MonadError GameError m => String -> m Action
-parseAction "B" = pure Backtrack
-parseAction line = case splitOn "->" line of
+parsePour :: MonadError GameError m => String -> m Pour
+parsePour line = case splitOn "->" line of
   [from, to] -> do
     fromBottle <- case readMaybe from of
       Nothing -> throwError (InvalidBottleId from)
@@ -19,15 +18,12 @@ parseAction line = case splitOn "->" line of
     toBottle <- case readMaybe to of
       Nothing -> throwError (InvalidBottleId to)
       Just a -> pure a
-    pure (Move (Pour fromBottle toBottle))
+    pure (Pour fromBottle toBottle)
   _ -> throwError (InvalidInput line)
 
-getAction :: MonadError GameError m => [Pour] -> String -> m Action
-getAction validPours line = do
-  action <- parseAction line
-  case action of
-    Backtrack -> pure action
-    Move pour ->
-      if elem pour validPours
-      then pure action
-      else throwError (InvalidAction action)
+getPour :: MonadError GameError m => [Pour] -> String -> m Pour
+getPour validPours line = do
+  pour <- parsePour line
+  if elem pour validPours
+  then pure pour
+  else throwError (InvalidPour pour)

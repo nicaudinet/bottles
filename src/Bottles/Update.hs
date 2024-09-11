@@ -15,10 +15,7 @@ import Data.List (group)
 import qualified Data.Map as M
 
 import Bottles.Utils (headMaybe)
-import Bottles.Types
-  ( BottleId, Bottle, Bottles, Pour(..), Action(..), GameError(..)
-  , GameState(..), initGameState
-  )
+import Bottles.Model ( BottleId, Bottle, Bottles, Pour(..), GameError(..) )
 
 --------------------
 -- Update actions --
@@ -26,7 +23,7 @@ import Bottles.Types
 
 -- | Use the Excpet monad to run an action and check if it throws an error
 tryPour :: Pour -> Bottles -> Bool
-tryPour p = isRight . runExcept . play (Move p) . initGameState
+tryPour p = isRight . runExcept . play p
 
 possiblePours :: Bottles -> [Pour]
 possiblePours bs =
@@ -46,12 +43,12 @@ getBottle bottleId bs = do
     Just bottle -> pure bottle
     Nothing -> throwError (BottleNotFound bottleId)
 
-playPour
+play
   :: MonadError GameError m
   => Pour
   -> Bottles
   -> m Bottles
-playPour (Pour from to) bs = do
+play (Pour from to) bs = do
   -- Get the two bottles
   fromBottle <- getBottle from bs
   toBottle <- getBottle to bs
@@ -79,25 +76,6 @@ playPour (Pour from to) bs = do
   let f1 = M.insert from fromTail
   let f2 = M.insert to (fromHead <> toBottle)
   pure . f1 . f2 $ bs
-
-playBacktrack :: Pour -> Bottles -> Bottles
-playBacktrack (Pour from to) bs = undefined
-
-play :: MonadError GameError m => Action -> GameState -> m GameState
-play (Move pour) state = do
-  newBottles <- playPour pour (bottles state)
-  pure $ GameState
-    { bottles = newBottles
-    , history = pour : history state
-    }
-play Backtrack state = pure $
-  case history state of
-    [] -> state
-    (pour:rest) -> 
-      GameState
-        { bottles = playBacktrack pour (bottles state)
-        , history = rest
-        }
 
 ---------------
 -- Game over --

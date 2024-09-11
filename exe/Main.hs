@@ -4,35 +4,33 @@ import Control.Monad.State (StateT, execStateT, get, gets, put, liftIO)
 import Control.Monad.Except (ExceptT, runExceptT, handleError)
 
 import Bottles.Create (PuzzleSize(..), createPuzzle)
-import Bottles.Parse (getAction)
+import Bottles.Parse (getPour)
 import Bottles.Solver (solve)
-import Bottles.Types (Bottles, Action(..), GameError(..), GameState(..))
+import Bottles.Model (Bottles, GameError(..))
 import Bottles.Update (possiblePours, play, gameOver)
-import Bottles.Utils (untilM, shuffle)
+import Bottles.Utils (untilM)
 import Bottles.View (showBottles, showPour, showGame)
 
 --------------------
 -- Main game loop --
 --------------------
 
-type Game a = ExceptT GameError (StateT GameState IO) a
+type Game a = ExceptT GameError (StateT Bottles IO) a
 
 step :: Game ()
 step = handleError (liftIO . print) $ do
-  state <- get
-  let pours = possiblePours (bottles state)
-  let actions = Backtrack : map Move pours
-  liftIO $ putStrLn (showGame (bottles state) actions)
+  bottles <- get
+  let pours = possiblePours bottles
+  liftIO $ putStrLn (showGame bottles pours)
   line <- liftIO getLine
-  action <- getAction pours line
-  nextState <- play action state
+  action <- getPour pours line
+  nextState <- play action bottles
   put nextState
 
 runGame :: Bottles -> Game () -> IO ()
-runGame start game = do
-  let initState = GameState { bottles = start, history = [] }
-  endState <- execStateT (runExceptT game) initState
-  putStrLn (showBottles (bottles endState))
+runGame bottles game = do
+  endBottles <- execStateT (runExceptT game) bottles
+  putStrLn (showBottles endBottles)
   putStrLn "You win!"
 
 parsePuzzleSize :: String -> PuzzleSize
@@ -53,7 +51,7 @@ main = do
   putStrLn "---"
   choice <- getLine
   case choice of
-    "1" -> runGame puzzle (untilM (gets (gameOver . bottles)) step)
+    "1" -> runGame puzzle (untilM (gets gameOver) step)
     "2" -> do
       putStrLn "---"
       putStrLn "Solution:"

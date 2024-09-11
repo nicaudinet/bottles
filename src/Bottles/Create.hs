@@ -3,7 +3,7 @@ module Bottles.Create
   , createPuzzle
   ) where
 
-import Bottles.Types (Bottles)
+import Bottles.Model (Bottles)
 import Bottles.Solver (solve)
 import Control.Monad (replicateM)
 import Control.Monad.Random (MonadRandom, getRandom)

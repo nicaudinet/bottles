@@ -1,13 +1,10 @@
-module Bottles.Types
+module Bottles.Model
   ( Color(..)
   , BottleId
   , Bottle
   , Bottles
   , Pour(..)
-  , Action(..)
   , GameError(..)
-  , GameState(..)
-  , initGameState
   ) where
 
 import qualified Data.Map as M
@@ -33,13 +30,11 @@ type Bottles = M.Map BottleId Bottle
 data Pour = Pour BottleId BottleId
   deriving Eq
 
-data Action = Move Pour | Backtrack
-
 data GameError
   = InvalidPuzzleType String
   | InvalidBottleId String
   | InvalidInput String
-  | InvalidAction Action
+  | InvalidPour Pour
   | BottleNotFound BottleId
   | FromAndToAreTheSame BottleId
   | FromBottleIsEmpty BottleId
@@ -54,8 +49,8 @@ instance Show GameError where
     "Invalid bottle id " <> show bid <> ". Try again."
   show (InvalidInput input) =
     "Invalid input " <> show input <> ". Try again."
-  show (InvalidAction _action) =
-    "Action is invalid. Try again."
+  show (InvalidPour (Pour from to)) =
+    "Invalid pour from " <> show from  <> " to " <> show to <> ". Try again."
   show (BottleNotFound bid) =
     "Bottle not found: " <> show bid
   show (FromAndToAreTheSame bottleId) =
@@ -68,15 +63,3 @@ instance Show GameError where
     "Colors " <> show c1 <> " and " <> show c2 <> " don't match"
   show NoOpAction =
     "Action does nothing useful"
-
-data GameState = GameState
-  { bottles :: Bottles
-  , history :: [Pour]
-  }
-
-initGameState :: Bottles -> GameState
-initGameState bs =
-  GameState
-    { bottles = bs
-    , history = []
-    }

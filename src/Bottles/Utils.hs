@@ -1,7 +1,6 @@
 module Bottles.Utils
   ( headMaybe
   , tailSafe
-  -- , (!?)
   , untilM
   , shuffle
   ) where
@@ -17,9 +16,6 @@ headMaybe (x:_) = Just x
 tailSafe :: [a] -> [a]
 tailSafe [] = []
 tailSafe (_:xs) = xs
-
-(!?) :: [a] -> Int -> Maybe a
-(!?) xs idx = lookup idx (zip [0..] xs)
 
 untilM :: Monad m => m Bool -> m a -> m ()
 untilM cond action = do
