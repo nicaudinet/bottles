@@ -1,6 +1,7 @@
 module Bottles.Utils
   ( headMaybe
-  , (!?)
+  , tailSafe
+  -- , (!?)
   , untilM
   , shuffle
   ) where
@@ -12,6 +13,10 @@ import Data.Ord (comparing)
 headMaybe :: [a] -> Maybe a
 headMaybe [] = Nothing
 headMaybe (x:_) = Just x
+
+tailSafe :: [a] -> [a]
+tailSafe [] = []
+tailSafe (_:xs) = xs
 
 (!?) :: [a] -> Int -> Maybe a
 (!?) xs idx = lookup idx (zip [0..] xs)

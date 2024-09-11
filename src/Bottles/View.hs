@@ -1,9 +1,11 @@
 module Bottles.View
   ( showBottles
+  , showPour
   , showGame
   ) where
 
-import Bottles.Types (Color(..), Bottles, Action(..), Actions)
+import Bottles.Types (Pour(..), Color(..), Bottle, Bottles, Action(..))
+import Bottles.Utils (headMaybe, tailSafe)
 import Data.List (intercalate, unfoldr)
 import qualified Data.Map as M
 
@@ -12,19 +14,15 @@ type Row = [Square]
 type Grid = [Row]
 
 bottlesToGrid :: Bottles -> Grid
-bottlesToGrid bs = unfoldr makeRow (M.elems bs, 3)
+bottlesToGrid = reverse . unfoldr makeRow . map reverse . M.elems
   where
-    makeRow :: ([[Color]], Int) -> Maybe (Row, ([[Color]], Int))
-    makeRow (xs, n)
-      | n < 0 = Nothing
-      | otherwise =
-        let
-          getSquare x
-            | n < length x = Full (reverse x !! n)
-            | otherwise = Empty
-          newRow = map getSquare xs
-        in
-          Just (newRow, (xs, n - 1))
+    getSquare :: Bottle -> Square
+    getSquare = maybe Empty Full . headMaybe
+
+    makeRow :: [Bottle] -> Maybe (Row, [Bottle])
+    makeRow xs
+      | all null xs = Nothing
+      | otherwise = Just (map getSquare xs, map tailSafe xs)
 
 -- xterm-256color color codes
 -- https://stackabuse.com/how-to-print-colored-text-in-python/
@@ -75,8 +73,8 @@ showGrid grid =
 showBottles :: Bottles -> String
 showBottles = showGrid . bottlesToGrid
 
-showAction :: Int -> Action -> String
-showAction idx (Pour from to) = concat
+showPour :: Int -> Pour -> String
+showPour idx (Pour from to) = concat
   [ if idx < 10 then " " else ""
   , show idx
   , ": "
@@ -85,14 +83,16 @@ showAction idx (Pour from to) = concat
   , show to
   ]
 
-showActions :: Actions -> String
+showAction :: Int -> Action -> String
+showAction idx (Move pour) = showPour idx pour
+showAction _ Backtrack = " B: Backtrack"
+
+showActions :: [Action] -> String
 showActions = intercalate "\n" . zipWith showAction [0..] 
 
-showGame :: Bottles -> Actions -> String
-showGame bottles actions = unlines
+showGame :: Bottles -> [Action] -> String
+showGame bottles actions = intercalate "\n"
   [ "---"
   , showBottles bottles
-  , "---"
-  , showActions actions
   , "---"
   ]

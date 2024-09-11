@@ -3,9 +3,11 @@ module Bottles.Types
   , BottleId
   , Bottle
   , Bottles
+  , Pour(..)
   , Action(..)
-  , Actions
   , GameError(..)
+  , GameState(..)
+  , initGameState
   ) where
 
 import qualified Data.Map as M
@@ -28,14 +30,16 @@ type Bottle = [Color]
 type BottleId = Int
 type Bottles = M.Map BottleId Bottle
 
-data Action = Pour BottleId BottleId
-  deriving Show
-type Actions = [Action]
+data Pour = Pour BottleId BottleId
+  deriving Eq
+
+data Action = Move Pour | Backtrack
 
 data GameError
   = InvalidPuzzleType String
+  | InvalidBottleId String
   | InvalidInput String
-  | ActionNotFound Int
+  | InvalidAction Action
   | BottleNotFound BottleId
   | FromAndToAreTheSame BottleId
   | FromBottleIsEmpty BottleId
@@ -46,10 +50,12 @@ data GameError
 instance Show GameError where
   show (InvalidPuzzleType puzzleType) =
     "Invalid puzzle type " <> show puzzleType <> ". Try again."
+  show (InvalidBottleId bid) =
+    "Invalid bottle id " <> show bid <> ". Try again."
   show (InvalidInput input) =
     "Invalid input " <> show input <> ". Try again."
-  show (ActionNotFound actionId) =
-    "Action id not found in list of available actions: " <> show actionId
+  show (InvalidAction _action) =
+    "Action is invalid. Try again."
   show (BottleNotFound bid) =
     "Bottle not found: " <> show bid
   show (FromAndToAreTheSame bottleId) =
@@ -62,3 +68,15 @@ instance Show GameError where
     "Colors " <> show c1 <> " and " <> show c2 <> " don't match"
   show NoOpAction =
     "Action does nothing useful"
+
+data GameState = GameState
+  { bottles :: Bottles
+  , history :: [Pour]
+  }
+
+initGameState :: Bottles -> GameState
+initGameState bs =
+  GameState
+    { bottles = bs
+    , history = []
+    }

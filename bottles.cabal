@@ -60,9 +60,11 @@ library
       , mtl ^>=2.3.1
       , MonadRandom
       , process
+      , split
       , transformers
     exposed-modules:
       , Bottles.Create
+      , Bottles.Parse
       , Bottles.Solver
       , Bottles.Update
       , Bottles.Types

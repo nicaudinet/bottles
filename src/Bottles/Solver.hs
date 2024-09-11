@@ -1,48 +1,29 @@
-{-# LANGUAGE OverloadedRecordDot #-}
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE InstanceSigs #-}
-
 module Bottles.Solver
-  ( SolverState(..)
-  , toSolverState
-  , solver
+  ( solver
   , solve
   ) where
 
-import Bottles.Types (Bottles, Action, Actions)
+import Bottles.Types (Bottles, Pour, Action(..), GameState(..), initGameState)
 import Bottles.Utils (headMaybe)
-import Bottles.Update (availableActions, play, gameOver)
+import Bottles.Update (possiblePours, play, gameOver)
 import Control.Monad (MonadPlus, mzero, msum)
 import Control.Monad.Except (runExcept)
-
-data SolverState = SolverState
-  { bottles :: Bottles
-  , history :: [Action]
-  }
-  deriving Show
-
-toSolverState :: Bottles -> SolverState
-toSolverState bs = SolverState { bottles = bs , history = [] }
 
 choose :: MonadPlus m => [a] -> m a
 choose = msum . map pure
 
-solver :: MonadPlus m => SolverState -> m SolverState
+solver :: MonadPlus m => GameState -> m GameState
 solver state
-  | gameOver state.bottles = pure state
-  | null possibleActions = mzero
+  | gameOver (bottles state) = pure state
+  | null pours = mzero
   | otherwise = do
-      action <- choose possibleActions
-      case runExcept (play action state.bottles) of
+      pour <- choose pours
+      case runExcept (play (Move pour) state) of
         Left _ -> mzero
-        Right bs -> solver $
-          SolverState
-            { bottles = bs
-            , history = action : state.history
-            }
+        Right state' -> solver state'
   where
-    possibleActions :: Actions
-    possibleActions = availableActions state.bottles
+    pours :: [Pour]
+    pours = possiblePours (bottles state)
 
-solve :: Bottles -> Maybe Actions
-solve = fmap (reverse . history) . headMaybe . solver . toSolverState
+solve :: Bottles -> Maybe [Pour]
+solve = fmap (reverse . history) . headMaybe . solver . initGameState

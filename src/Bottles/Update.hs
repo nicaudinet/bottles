@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module Bottles.Update
-  ( availableActions
+  ( possiblePours
   , play
   , gameOver
   ) where
@@ -16,23 +16,25 @@ import qualified Data.Map as M
 
 import Bottles.Utils (headMaybe)
 import Bottles.Types
-  ( BottleId, Bottle, Bottles, Action(..), Actions, GameError(..))
+  ( BottleId, Bottle, Bottles, Pour(..), Action(..), GameError(..)
+  , GameState(..), initGameState
+  )
 
 --------------------
 -- Update actions --
 --------------------
 
 -- | Use the Excpet monad to run an action and check if it throws an error
-tryAction :: Bottles -> Action -> Bool
-tryAction bs a = isRight (runExcept (play a bs))
+tryPour :: Pour -> Bottles -> Bool
+tryPour p = isRight . runExcept . play (Move p) . initGameState
 
-availableActions :: Bottles -> Actions
-availableActions bs =
+possiblePours :: Bottles -> [Pour]
+possiblePours bs =
   let
     bottleIds = M.keys bs
-    allActions = liftA2 Pour bottleIds bottleIds
+    allPours = liftA2 Pour bottleIds bottleIds
   in
-    filter (tryAction bs) allActions
+    filter (flip tryPour bs) allPours
 
 --------------------
 -- Update bottles --
@@ -44,13 +46,12 @@ getBottle bottleId bs = do
     Just bottle -> pure bottle
     Nothing -> throwError (BottleNotFound bottleId)
 
-pour
+playPour
   :: MonadError GameError m
-  => BottleId
-  -> BottleId
+  => Pour
   -> Bottles
   -> m Bottles
-pour from to bs = do
+playPour (Pour from to) bs = do
   -- Get the two bottles
   fromBottle <- getBottle from bs
   toBottle <- getBottle to bs
@@ -79,8 +80,24 @@ pour from to bs = do
   let f2 = M.insert to (fromHead <> toBottle)
   pure . f1 . f2 $ bs
 
-play :: MonadError GameError m => Action -> Bottles -> m Bottles
-play (Pour from to) = pour from to
+playBacktrack :: Pour -> Bottles -> Bottles
+playBacktrack (Pour from to) bs = undefined
+
+play :: MonadError GameError m => Action -> GameState -> m GameState
+play (Move pour) state = do
+  newBottles <- playPour pour (bottles state)
+  pure $ GameState
+    { bottles = newBottles
+    , history = pour : history state
+    }
+play Backtrack state = pure $
+  case history state of
+    [] -> state
+    (pour:rest) -> 
+      GameState
+        { bottles = playBacktrack pour (bottles state)
+        , history = rest
+        }
 
 ---------------
 -- Game over --
