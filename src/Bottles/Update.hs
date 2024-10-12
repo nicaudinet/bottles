@@ -1,41 +1,36 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module Bottles.Update
-  ( possiblePours
-  , play
+  ( parsePour
+  , update
   , gameOver
   ) where
 
-import Control.Applicative (liftA2)
 import Control.Monad (when)
-import Control.Monad.Except (runExcept)
 import Control.Monad.Error.Class (MonadError, throwError)
-import Data.Either (isRight)
 import Data.List (group)
+import Data.List.Split (splitOn)
 import qualified Data.Map as M
+import Text.Read (readMaybe)
 
+import Bottles.Model (Bottle, BottleId, Bottles, GameError (..), Pour (..))
 import Bottles.Utils (headMaybe)
-import Bottles.Model ( BottleId, Bottle, Bottles, Pour(..), GameError(..) )
-
---------------------
--- Update actions --
---------------------
-
--- | Use the Excpet monad to run an action and check if it throws an error
-tryPour :: Pour -> Bottles -> Bool
-tryPour p = isRight . runExcept . play p
-
-possiblePours :: Bottles -> [Pour]
-possiblePours bs =
-  let
-    bottleIds = M.keys bs
-    allPours = liftA2 Pour bottleIds bottleIds
-  in
-    filter (flip tryPour bs) allPours
 
 --------------------
 -- Update bottles --
 --------------------
+
+parsePour :: MonadError GameError m => String -> m Pour
+parsePour line = case splitOn "->" line of
+  [from, to] -> do
+    fromBottle <- case readMaybe from of
+      Nothing -> throwError (InvalidBottleId from)
+      Just a -> pure a
+    toBottle <- case readMaybe to of
+      Nothing -> throwError (InvalidBottleId to)
+      Just a -> pure a
+    pure (Pour fromBottle toBottle)
+  _ -> throwError (InvalidInput line)
 
 getBottle :: MonadError GameError m => BottleId -> Bottles -> m Bottle
 getBottle bottleId bs = do
@@ -43,12 +38,8 @@ getBottle bottleId bs = do
     Just bottle -> pure bottle
     Nothing -> throwError (BottleNotFound bottleId)
 
-play
-  :: MonadError GameError m
-  => Pour
-  -> Bottles
-  -> m Bottles
-play (Pour from to) bs = do
+update :: MonadError GameError m => Pour -> Bottles -> m Bottles
+update (Pour from to) bs = do
   -- Get the two bottles
   fromBottle <- getBottle from bs
   toBottle <- getBottle to bs
@@ -58,7 +49,7 @@ play (Pour from to) bs = do
   -- Check there are colors in the from bottle
   (fromHead, fromTail) <- case group fromBottle of
     [] -> throwError (FromBottleIsEmpty from)
-    (x:xs) -> pure (x, concat xs)
+    (x : xs) -> pure (x, concat xs)
   -- Check we're not just swapping bottles
   when (null fromTail && null toBottle) $
     throwError NoOpAction
@@ -73,9 +64,7 @@ play (Pour from to) bs = do
       when (fromColor /= toColor) $
         throwError (ColorsDontMatch fromColor toColor)
   -- Pour a color from one bottle to the other
-  let f1 = M.insert from fromTail
-  let f2 = M.insert to (fromHead <> toBottle)
-  pure . f1 . f2 $ bs
+  pure . M.insert from fromTail . M.insert to (fromHead <> toBottle) $ bs
 
 ---------------
 -- Game over --
@@ -83,7 +72,7 @@ play (Pour from to) bs = do
 
 validBottle :: Bottle -> Bool
 validBottle [] = True
-validBottle [a,b,c,d] = (a == b) && (b == c) && (c == d)
+validBottle [a, b, c, d] = (a == b) && (b == c) && (c == d)
 validBottle _ = False
 
 gameOver :: Bottles -> Bool

@@ -64,7 +64,6 @@ library
       , transformers
     exposed-modules:
       , Bottles.Create
-      , Bottles.Parse
       , Bottles.Solver
       , Bottles.Update
       , Bottles.Model
