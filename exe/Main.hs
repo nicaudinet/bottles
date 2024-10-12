@@ -1,30 +1,37 @@
-module Main where
+{-# LANGUAGE FlexibleContexts #-}
 
-import Control.Monad.Except (ExceptT, handleError, runExceptT)
-import Control.Monad.State (StateT, execStateT, get, gets, liftIO, put)
+module Main where
 
 import Bottles.Create (PuzzleSize (..), createPuzzle)
 import Bottles.Model (Bottles, GameError (..))
 import Bottles.Solver (solve)
 import Bottles.Update (gameOver, parsePour, update)
-import Bottles.Utils (untilM)
 import Bottles.View (showBottles, showGame, showPour)
+import Control.Monad.Except (MonadError, handleError, runExceptT)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 
-type Game a = ExceptT GameError (StateT Bottles IO) a
+handler :: MonadIO m => Bottles -> GameError -> m Bottles
+handler bottles err = do
+  liftIO (print err)
+  pure bottles
 
-step :: Game ()
-step = handleError (liftIO . print) $ do
-  bottles <- get
+step :: (MonadError GameError m, MonadIO m) => Bottles -> m Bottles
+step bottles = handleError (handler bottles) $ do
   liftIO $ putStrLn (showGame bottles)
   line <- liftIO getLine
   action <- parsePour line
-  nextState <- update action bottles
-  put nextState
+  update action bottles
+
+loop :: (MonadError GameError m, MonadIO m) => Bottles -> m Bottles
+loop bottles = do
+  newBottles <- step bottles
+  if gameOver newBottles
+    then pure newBottles
+    else loop newBottles
 
 runGame :: Bottles -> IO ()
 runGame bottles = do
-  let game = untilM (gets gameOver) step
-  endBottles <- execStateT (runExceptT game) bottles
+  Right endBottles <- runExceptT (loop bottles)
   putStrLn (showBottles endBottles)
   putStrLn "You win!"
 
