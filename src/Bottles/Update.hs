@@ -11,7 +11,7 @@ import Data.List.Split (splitOn)
 import qualified Data.Map as M
 import Text.Read (readMaybe)
 
-import Bottles.Model (Bottle, BottleId, Bottles, GameError (..), Pour (..))
+import Bottles.Model (Bottle, Bottles, GameError (..), Pour (..))
 import Bottles.Utils (headMaybe)
 
 --------------------
@@ -34,15 +34,11 @@ parsePour line = case splitOn "->" line of
     pure (Pour fromBottle toBottle)
   _ -> Left (InvalidInput line)
 
-getBottle :: BottleId -> Bottles -> Either GameError Bottle
-getBottle bottleId bs =
-  maybeThrow (BottleNotFound bottleId) (M.lookup bottleId bs)
-
 update :: Bottles -> Pour -> Either GameError Bottles
 update bs (Pour from to) = do
   -- Get the bottles
-  fromBottle <- getBottle from bs
-  toBottle <- getBottle to bs
+  fromBottle <- maybeThrow (BottleNotFound from) (M.lookup from bs)
+  toBottle <- maybeThrow (BottleNotFound to) (M.lookup to bs)
   -- Check that from and to are different
   whenThrow (from == to) (FromAndToAreTheSame from)
   -- Check there are colors in the from bottle

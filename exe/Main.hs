@@ -1,5 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-
 module Main where
 
 import Bottles.Create (PuzzleSize (..), createPuzzle)
@@ -25,12 +23,6 @@ loop bottles = do
     then pure newBottles
     else loop newBottles
 
-runGame :: Bottles -> IO ()
-runGame bottles = do
-  endBottles <- loop bottles
-  putStrLn (showBottles endBottles)
-  putStrLn "You win!"
-
 parsePuzzleSize :: String -> PuzzleSize
 parsePuzzleSize "small" = Small
 parsePuzzleSize "medium" = Medium
@@ -49,7 +41,10 @@ main = do
   putStrLn "---"
   choice <- getLine
   case choice of
-    "1" -> runGame puzzle
+    "1" -> do
+      endBottles <- loop puzzle
+      putStrLn (showBottles endBottles)
+      putStrLn "You win!"
     "2" -> do
       putStrLn "---"
       putStrLn "Solution:"

@@ -9,39 +9,37 @@ import Bottles.Utils (headMaybe)
 import Control.Applicative (liftA2)
 import Control.Monad (MonadPlus, msum, mzero)
 import qualified Data.Map as M
-import Data.Maybe (isJust)
+import Data.Maybe (catMaybes)
 
 data SolverState = SolverState
-  { bottles :: Bottles
+  { current :: Bottles
   , history :: [Pour]
   }
 
--- | Use the Excpet monad to run an action and check if it throws an error
-tryPour :: Bottles -> Pour -> Maybe Bottles
-tryPour bs = either (const Nothing) Just . update bs
+tryPour :: Bottles -> Pour -> Maybe (Pour, Bottles)
+tryPour bs pour =
+  case update bs pour of
+    Left _ -> Nothing
+    Right newBottles -> Just (pour, newBottles)
 
-possiblePours :: Bottles -> [Pour]
+possiblePours :: Bottles -> [(Pour, Bottles)]
 possiblePours bs =
   let pours = liftA2 Pour (M.keys bs) (M.keys bs)
-   in filter (isJust . tryPour bs) pours
+   in catMaybes (map (tryPour bs) pours)
 
 choose :: MonadPlus m => [a] -> m a
 choose = msum . map pure
 
 solver :: MonadPlus m => SolverState -> m SolverState
 solver state
-  | gameOver (bottles state) = pure state
+  | gameOver (current state) = pure state
   | null pours = mzero
   | otherwise = do
-      pour <- choose pours
-      case tryPour (bottles state) pour of
-        Nothing -> mzero
-        Just newBottles ->
-          let newState = SolverState newBottles (pour : history state)
-           in solver newState
+      (pour, newBottles) <- choose pours
+      solver (SolverState newBottles (pour : history state))
  where
-  pours :: [Pour]
-  pours = possiblePours (bottles state)
+  pours :: [(Pour, Bottles)]
+  pours = possiblePours (current state)
 
 solve :: Bottles -> Maybe [Pour]
 solve = fmap (reverse . history) . headMaybe . solver . flip SolverState []
