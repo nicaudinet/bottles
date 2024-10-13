@@ -8,7 +8,6 @@ import Bottles.Update (gameOver, update)
 import Bottles.Utils (headMaybe)
 import Control.Applicative (liftA2)
 import Control.Monad (MonadPlus, msum, mzero)
-import Control.Monad.Except (runExcept)
 import qualified Data.Map as M
 import Data.Maybe (isJust)
 
@@ -19,7 +18,7 @@ data SolverState = SolverState
 
 -- | Use the Excpet monad to run an action and check if it throws an error
 tryPour :: Bottles -> Pour -> Maybe Bottles
-tryPour bs = either (const Nothing) Just . runExcept . flip update bs
+tryPour bs = either (const Nothing) Just . update bs
 
 possiblePours :: Bottles -> [Pour]
 possiblePours bs =

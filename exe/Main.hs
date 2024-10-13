@@ -3,26 +3,22 @@
 module Main where
 
 import Bottles.Create (PuzzleSize (..), createPuzzle)
-import Bottles.Model (Bottles, GameError (..))
+import Bottles.Model (Bottles)
 import Bottles.Solver (solve)
 import Bottles.Update (gameOver, parsePour, update)
 import Bottles.View (showBottles, showGame, showPour)
-import Control.Monad.Except (MonadError, handleError, runExceptT)
-import Control.Monad.IO.Class (MonadIO, liftIO)
 
-handler :: MonadIO m => Bottles -> GameError -> m Bottles
-handler bottles err = do
-  liftIO (print err)
-  pure bottles
+step :: Bottles -> IO Bottles
+step bottles = do
+  putStrLn (showGame bottles)
+  line <- getLine
+  case (parsePour line >>= update bottles) of
+    Right newBottles -> pure newBottles
+    Left gameError -> do
+      print gameError
+      pure bottles
 
-step :: (MonadError GameError m, MonadIO m) => Bottles -> m Bottles
-step bottles = handleError (handler bottles) $ do
-  liftIO $ putStrLn (showGame bottles)
-  line <- liftIO getLine
-  action <- parsePour line
-  update action bottles
-
-loop :: (MonadError GameError m, MonadIO m) => Bottles -> m Bottles
+loop :: Bottles -> IO Bottles
 loop bottles = do
   newBottles <- step bottles
   if gameOver newBottles
@@ -31,7 +27,7 @@ loop bottles = do
 
 runGame :: Bottles -> IO ()
 runGame bottles = do
-  Right endBottles <- runExceptT (loop bottles)
+  endBottles <- loop bottles
   putStrLn (showBottles endBottles)
   putStrLn "You win!"
 

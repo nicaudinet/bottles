@@ -6,8 +6,6 @@ module Bottles.Update
   , gameOver
   ) where
 
-import Control.Monad (when)
-import Control.Monad.Error.Class (MonadError, throwError)
 import Data.List (group)
 import Data.List.Split (splitOn)
 import qualified Data.Map as M
@@ -20,49 +18,47 @@ import Bottles.Utils (headMaybe)
 -- Update bottles --
 --------------------
 
-parsePour :: MonadError GameError m => String -> m Pour
+maybeThrow :: GameError -> Maybe a -> Either GameError a
+maybeThrow err Nothing = Left err
+maybeThrow _ (Just a) = Right a
+
+whenThrow :: Bool -> GameError -> Either GameError ()
+whenThrow True err = Left err
+whenThrow False _ = Right ()
+
+parsePour :: String -> Either GameError Pour
 parsePour line = case splitOn "->" line of
   [from, to] -> do
-    fromBottle <- case readMaybe from of
-      Nothing -> throwError (InvalidBottleId from)
-      Just a -> pure a
-    toBottle <- case readMaybe to of
-      Nothing -> throwError (InvalidBottleId to)
-      Just a -> pure a
+    fromBottle <- maybeThrow (InvalidBottleId from) (readMaybe from)
+    toBottle <- maybeThrow (InvalidBottleId to) (readMaybe to)
     pure (Pour fromBottle toBottle)
-  _ -> throwError (InvalidInput line)
+  _ -> Left (InvalidInput line)
 
-getBottle :: MonadError GameError m => BottleId -> Bottles -> m Bottle
-getBottle bottleId bs = do
-  case M.lookup bottleId bs of
-    Just bottle -> pure bottle
-    Nothing -> throwError (BottleNotFound bottleId)
+getBottle :: BottleId -> Bottles -> Either GameError Bottle
+getBottle bottleId bs =
+  maybeThrow (BottleNotFound bottleId) (M.lookup bottleId bs)
 
-update :: MonadError GameError m => Pour -> Bottles -> m Bottles
-update (Pour from to) bs = do
-  -- Get the two bottles
+update :: Bottles -> Pour -> Either GameError Bottles
+update bs (Pour from to) = do
+  -- Get the bottles
   fromBottle <- getBottle from bs
   toBottle <- getBottle to bs
   -- Check that from and to are different
-  when (from == to) $
-    throwError (FromAndToAreTheSame from)
+  whenThrow (from == to) (FromAndToAreTheSame from)
   -- Check there are colors in the from bottle
   (fromHead, fromTail) <- case group fromBottle of
-    [] -> throwError (FromBottleIsEmpty from)
-    (x : xs) -> pure (x, concat xs)
+    [] -> Left (FromBottleIsEmpty from)
+    (x : xs) -> Right (x, concat xs)
   -- Check we're not just swapping bottles
-  when (null fromTail && null toBottle) $
-    throwError NoOpAction
+  whenThrow (null fromTail && null toBottle) NoOpAction
   -- Check there's space in the to bottle
-  when (length toBottle > 4 - length fromHead) $
-    throwError (ToBottleIsTooFull to)
+  whenThrow (length toBottle > 4 - length fromHead) (ToBottleIsTooFull to)
   -- Check the colors match
   let fromColor = head fromHead
   case headMaybe toBottle of
-    Nothing -> pure ()
+    Nothing -> Right ()
     Just toColor ->
-      when (fromColor /= toColor) $
-        throwError (ColorsDontMatch fromColor toColor)
+      whenThrow (fromColor /= toColor) (ColorsDontMatch fromColor toColor)
   -- Pour a color from one bottle to the other
   pure . M.insert from fromTail . M.insert to (fromHead <> toBottle) $ bs
 
