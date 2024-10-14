@@ -6,21 +6,20 @@ module Bottles.View
 
 import Bottles.Model (Bottle, Bottles, Color (..), Pour (..))
 import Bottles.Utils (headMaybe, tailSafe)
-import Data.List (intercalate, unfoldr)
+import Data.List (intercalate, intersperse, unfoldr)
 import qualified Data.Map as M
 
 data Square = Empty | Separator | Full Color
-type Row = [Square]
-type Grid = [Row]
+type Line = [Square]
 
-bottlesToGrid :: Bottles -> Grid
-bottlesToGrid = reverse . unfoldr makeRow . map reverse . M.elems
+bottlesToGrid :: Bottles -> [Line]
+bottlesToGrid = reverse . unfoldr makeLine . map reverse . M.elems
  where
   getSquare :: Bottle -> Square
   getSquare = maybe Empty Full . headMaybe
 
-  makeRow :: [Bottle] -> Maybe (Row, [Bottle])
-  makeRow xs
+  makeLine :: [Bottle] -> Maybe (Line, [Bottle])
+  makeLine xs
     | all null xs = Nothing
     | otherwise = Just (map getSquare xs, map tailSafe xs)
 
@@ -47,13 +46,10 @@ showSquare Empty = "  "
 showSquare Separator = "|"
 showSquare (Full color) = showColor color
 
-showRow :: Row -> String
-showRow row =
-  let
-    squares = map showSquare row
-    separator = showSquare Separator
-   in
-    separator <> intercalate separator squares <> separator
+showLine :: Line -> String
+showLine line =
+  let sepLine = [Separator] <> intersperse Separator line <> [Separator]
+   in concatMap showSquare sepLine
 
 showIndices :: Int -> String
 showIndices n =
@@ -63,16 +59,16 @@ showIndices n =
    in
     pad <> intercalate pad numbers
 
-showGrid :: Grid -> String
-showGrid grid =
+showLines :: [Line] -> String
+showLines ls =
   let
-    rows = intercalate "\n" (map showRow grid)
-    idxs = showIndices (length (head grid))
+    rows = intercalate "\n" (map showLine ls)
+    idxs = showIndices (length (head ls))
    in
     rows <> "\n" <> idxs
 
 showBottles :: Bottles -> String
-showBottles = showGrid . bottlesToGrid
+showBottles = showLines . bottlesToGrid
 
 showPour :: Int -> Pour -> String
 showPour idx (Pour from to) =

@@ -1,9 +1,9 @@
 module Bottles.Create
-  ( PuzzleSize(..)
+  ( PuzzleSize (..)
   , createPuzzle
   ) where
 
-import Bottles.Model (Bottles)
+import Bottles.Model (Bottles, Color)
 import Bottles.Solver (solve)
 import Control.Monad (replicateM)
 import Control.Monad.Random (MonadRandom, getRandom)
@@ -25,21 +25,21 @@ chunksOf n xs
   | length xs < n = [xs]
   | otherwise = take n xs : chunksOf n (drop n xs)
 
-randomBottles :: MonadRandom m => Int -> m Bottles
-randomBottles n = do
-  let initColors = concat $ replicate 4 $ map toEnum [0..n-1]
+colorPalette :: PuzzleSize -> [Color]
+colorPalette Small = map toEnum [0 .. 3]
+colorPalette Medium = map toEnum [0 .. 6]
+colorPalette Large = map toEnum [0 .. 9]
+
+randomBottles :: MonadRandom m => PuzzleSize -> m Bottles
+randomBottles size = do
+  let initColors = concat (replicate 4 (colorPalette size))
   randomColors <- shuffle initColors
   let bottles = chunksOf 4 randomColors <> [[], []]
-  pure (M.fromList $ zip [0..] bottles)
-
-sizeToInt :: PuzzleSize -> Int
-sizeToInt Small = 4
-sizeToInt Medium = 7
-sizeToInt Large = 10
+  pure (M.fromList $ zip [0 ..] bottles)
 
 createPuzzle :: MonadRandom m => PuzzleSize -> m Bottles
 createPuzzle size = do
-  bottles <- randomBottles (sizeToInt size)
+  bottles <- randomBottles size
   if isJust (solve bottles)
-  then pure bottles
-  else createPuzzle size
+    then pure bottles
+    else createPuzzle size
