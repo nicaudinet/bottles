@@ -1,10 +1,7 @@
 module Bottles.Create
-  ( PuzzleSize (..)
-  , createPuzzle
+  ( createPuzzle
   ) where
 
-import Bottles.Model (Bottles, Color)
-import Bottles.Solver (solve)
 import Control.Monad (replicateM)
 import Control.Monad.Random (MonadRandom, getRandom)
 import Data.List (sortBy)
@@ -12,7 +9,8 @@ import qualified Data.Map as M
 import Data.Maybe (isJust)
 import Data.Ord (comparing)
 
-data PuzzleSize = Small | Medium | Large
+import Bottles.Model (Bottles, Color, PuzzleSize (..))
+import Bottles.Solver (solve)
 
 shuffle :: MonadRandom m => [a] -> m [a]
 shuffle xs = do

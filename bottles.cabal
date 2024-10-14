@@ -58,9 +58,7 @@ library
         base ^>=4.17
       , containers
       , MonadRandom
-      , process
       , split
-      , transformers
     exposed-modules:
       , Bottles.Create
       , Bottles.Solver
@@ -68,7 +66,6 @@ library
       , Bottles.Model
       , Bottles.View
       , Bottles.Utils
-    -- other-modules:
 
 executable bottles
     import: warnings
@@ -79,8 +76,6 @@ executable bottles
         base ^>=4.17
       , bottles
       , containers
-      , mtl ^>=2.3.1
-    -- other-modules:
 
 test-suite bottles-test
     import: warnings

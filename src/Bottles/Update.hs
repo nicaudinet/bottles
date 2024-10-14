@@ -1,7 +1,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module Bottles.Update
-  ( parsePour
+  ( parsePuzzleSize
+  , parsePour
   , update
   , gameOver
   ) where
@@ -11,12 +12,8 @@ import Data.List.Split (splitOn)
 import qualified Data.Map as M
 import Text.Read (readMaybe)
 
-import Bottles.Model (Bottle, Bottles, GameError (..), Pour (..))
+import Bottles.Model (Bottle, Bottles, GameError (..), Pour (..), PuzzleSize (..))
 import Bottles.Utils (headMaybe)
-
---------------------
--- Update bottles --
---------------------
 
 maybeThrow :: GameError -> Maybe a -> Either GameError a
 maybeThrow err Nothing = Left err
@@ -26,6 +23,16 @@ whenThrow :: Bool -> GameError -> Either GameError ()
 whenThrow True err = Left err
 whenThrow False _ = Right ()
 
+----------------------
+-- Parse user input --
+----------------------
+
+parsePuzzleSize :: String -> Either String PuzzleSize
+parsePuzzleSize "small" = pure Small
+parsePuzzleSize "medium" = pure Medium
+parsePuzzleSize "large" = pure Large
+parsePuzzleSize _ = Left "Invalid puzzle size (choose small, medium, or large)"
+
 parsePour :: String -> Either GameError Pour
 parsePour line = case splitOn "->" line of
   [from, to] -> do
@@ -33,6 +40,10 @@ parsePour line = case splitOn "->" line of
     toBottle <- maybeThrow (InvalidBottleId to) (readMaybe to)
     pure (Pour fromBottle toBottle)
   _ -> Left (InvalidInput line)
+
+--------------------
+-- Update bottles --
+--------------------
 
 update :: Bottles -> Pour -> Either GameError Bottles
 update bs (Pour from to) = do

@@ -1,9 +1,9 @@
 module Main where
 
-import Bottles.Create (PuzzleSize (..), createPuzzle)
+import Bottles.Create (createPuzzle)
 import Bottles.Model (Bottles)
 import Bottles.Solver (solve)
-import Bottles.Update (gameOver, parsePour, update)
+import Bottles.Update (gameOver, parsePour, parsePuzzleSize, update)
 import Bottles.View (showBottles, showGame, showPour)
 
 step :: Bottles -> IO Bottles
@@ -23,17 +23,11 @@ loop bottles = do
     then pure newBottles
     else loop newBottles
 
-parsePuzzleSize :: String -> PuzzleSize
-parsePuzzleSize "small" = Small
-parsePuzzleSize "medium" = Medium
-parsePuzzleSize "large" = Large
-parsePuzzleSize _ = error "Invalid puzzle size (choose small, medium, or large)"
-
 main :: IO ()
 main = do
   putStrLn "What puzzle do you want to solve? (small/medium/large)"
   size <- parsePuzzleSize <$> getLine
-  puzzle <- createPuzzle size
+  puzzle <- either error createPuzzle size
   putStrLn "---"
   putStrLn "What do you want to do? (1/2)"
   putStrLn "1: solve the puzzle yourself"

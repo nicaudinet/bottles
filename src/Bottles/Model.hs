@@ -1,10 +1,11 @@
 module Bottles.Model
-  ( Color(..)
+  ( Color (..)
   , BottleId
   , Bottle
   , Bottles
-  , Pour(..)
-  , GameError(..)
+  , Pour (..)
+  , GameError (..)
+  , PuzzleSize (..)
   ) where
 
 import qualified Data.Map as M
@@ -50,7 +51,7 @@ instance Show GameError where
   show (InvalidInput input) =
     "Invalid input " <> show input <> ". Try again."
   show (InvalidPour (Pour from to)) =
-    "Invalid pour from " <> show from  <> " to " <> show to <> ". Try again."
+    "Invalid pour from " <> show from <> " to " <> show to <> ". Try again."
   show (BottleNotFound bid) =
     "Bottle not found: " <> show bid
   show (FromAndToAreTheSame bottleId) =
@@ -63,3 +64,5 @@ instance Show GameError where
     "Colors " <> show c1 <> " and " <> show c2 <> " don't match"
   show NoOpAction =
     "Action does nothing useful"
+
+data PuzzleSize = Small | Medium | Large
