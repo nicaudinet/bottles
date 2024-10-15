@@ -45,11 +45,16 @@ parsePour line = case splitOn "->" line of
 -- Update bottles --
 --------------------
 
-update :: Bottles -> Pour -> Either GameError Bottles
-update bs (Pour from to) = do
-  -- Get the bottles
-  fromBottle <- maybeThrow (BottleNotFound from) (M.lookup from bs)
-  toBottle <- maybeThrow (BottleNotFound to) (M.lookup to bs)
+-- Get the two bottles involved in the pour
+getPourBottles :: Bottles -> Pour -> Either GameError (Bottle, Bottle)
+getPourBottles bottles (Pour from to) = do
+  fromBottle <- maybeThrow (BottleNotFound from) (M.lookup from bottles)
+  toBottle <- maybeThrow (BottleNotFound to) (M.lookup to bottles)
+  pure (fromBottle, toBottle)
+
+-- Pour a bottle into another, check that the pour is valid
+validate :: Pour -> Bottle -> Bottle -> Either GameError (Bottle, Bottle)
+validate (Pour from to) fromBottle toBottle = do
   -- Check that from and to are different
   whenThrow (from == to) (FromAndToAreTheSame from)
   -- Check there are colors in the from bottle
@@ -61,13 +66,21 @@ update bs (Pour from to) = do
   -- Check there's space in the to bottle
   whenThrow (length toBottle > 4 - length fromHead) (ToBottleIsTooFull to)
   -- Check the colors match
-  let fromColor = head fromHead
   case headMaybe toBottle of
     Nothing -> Right ()
-    Just toColor ->
+    Just toColor -> do
+      let fromColor = head fromHead
       whenThrow (fromColor /= toColor) (ColorsDontMatch fromColor toColor)
-  -- Pour a color from one bottle to the other
-  pure . M.insert from fromTail . M.insert to (fromHead <> toBottle) $ bs
+  -- Return the split in the from bottle
+  pure (fromHead, fromTail)
+
+update :: Bottles -> Pour -> Either GameError Bottles
+update bottles pour@(Pour from to) = do
+  (fromBottle, toBottle) <- getPourBottles bottles pour
+  (fromHead, fromTail) <- validate pour fromBottle toBottle
+  let insertFrom = M.insert from fromTail
+  let insertTo = M.insert to (fromHead <> toBottle)
+  pure . insertFrom . insertTo $ bottles
 
 ---------------
 -- Game over --
